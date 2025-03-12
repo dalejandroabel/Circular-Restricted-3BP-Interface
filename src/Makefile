@@ -29,3 +29,8 @@ config:clean
 	cp package.json.$(SCOPE) package.json
 	cp vite.config.ts.$(SCOPE) vite.config.ts
 	@echo "For a different configuration use: make SCOPE=server config"
+
+reset_server:
+	make -C .. pull
+	make SCOPE=server config
+	make run
