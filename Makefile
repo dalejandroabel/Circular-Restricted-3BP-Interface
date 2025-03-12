@@ -8,3 +8,6 @@ config:
 
 install:config
 	make -C src install
+
+pull:
+	git pull
