@@ -149,7 +149,7 @@ app.post("/api/orbits/propagate/", (req, res) => {
   const N = req.body.N;
   const centered = req.body.centered;
 
-  const pythonProcess = spawn("python3", ["python_scripts/physics.py","Propagate",
+  const pythonProcess = spawn("../.crtbpenv/bin/python3", ["python_scripts/physics.py","Propagate",
      x, y, z, vx, vy, vz,mu,period, method, atol, rtol, N, centered]);
   let dataToSend = "";
 
