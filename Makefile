@@ -4,10 +4,11 @@ clean:
 	find . -name "*~" -delete
 
 config:
-	make SCOPE=$(SCOPE) config
+	make -C src SCOPE=$(SCOPE) config
 
 install:config
-	make -src install
+	make -C src install
+	cd server;npm install
 
 pull:
 	git pull
