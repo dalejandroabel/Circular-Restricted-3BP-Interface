@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import {
   Box,
   Button,
@@ -22,10 +22,28 @@ const ControlsContainer = styled(Box)(({ theme }) => ({
   gap: theme.spacing(4),
 }));
 
-const OrbitDisplay: React.FC = () => {
-  const [isCanonical, setIsCanonical] = useState(true);
+interface OrbitDisplayProps {
+  isCanonical: boolean;
+  plotData: any;
+  setIsCanonical: (isCanonical: boolean) => void;
+  onUnitsChange?: (isCanonical: boolean) => void;
+}
+
+const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
+  isCanonical,
+  setIsCanonical,
+  plotData }) => {
+  
+    useEffect(() => {
+      const fetchPlotData = async () => {
+        console.log(plotData);
+      };
+  
+      fetchPlotData();
+    }, [plotData]);
+
   // Sample plot data
-  const plotData = {
+  const ex_plotData = {
     x: [1, 2, 3, 4],
     y: [10, 15, 13, 17],
     type: 'scatter',
@@ -50,16 +68,16 @@ const OrbitDisplay: React.FC = () => {
       <Typography variant="h6" component="h2">
         Orbit display
       </Typography>
-      
-      <Box sx={{ 
-        width: '100%', 
-        height: '400px', 
+
+      <Box sx={{
+        width: '100%',
+        height: '400px',
         backgroundColor: '#f5f5f5',
         borderRadius: '4px',
         overflow: 'hidden'
       }}>
         <Plot
-          data={[plotData]}
+          data={[ex_plotData]}
           layout={{
             width: undefined,
             height: undefined,

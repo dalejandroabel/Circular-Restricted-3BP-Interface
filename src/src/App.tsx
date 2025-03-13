@@ -50,10 +50,16 @@ const BottomTableSection = styled(Box)(({ theme }) => ({
 const CircularRestrictedThreeBody: React.FC = () => {
   const [isCanonical, setIsCanonical] = useState(true);
   const  [data, setData] = useState(null);
+  const [plotData, setPlotData] = useState(null);
+  
 
   const handleDataLoaded = (loadedData) => {
     setData(loadedData);
   }
+  const handlePlotData = (plotData) => {
+    setPlotData(plotData);
+  }
+  
   return (
     <PageContainer>
       <Header>
@@ -80,6 +86,8 @@ const CircularRestrictedThreeBody: React.FC = () => {
           <OrbitDisplay 
             isCanonical={isCanonical} 
             onUnitsChange={setIsCanonical}
+            setIsCanonical={setIsCanonical}
+            plotData={plotData}
           />
         </PlotsSection>
 
@@ -96,6 +104,7 @@ const CircularRestrictedThreeBody: React.FC = () => {
         <OrbitsTableDisplay 
           isCanonical={isCanonical}
           data={data}
+          handlePlotData={handlePlotData}
         />
       </BottomTableSection>
     </PageContainer>

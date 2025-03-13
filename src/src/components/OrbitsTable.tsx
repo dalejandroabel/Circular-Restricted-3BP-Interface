@@ -10,7 +10,6 @@ import {
 } from '@tanstack/react-table';
 import {
   Box,
-  Paper,
   Table,
   TableBody,
   TableCell,
@@ -21,7 +20,10 @@ import {
   TablePagination,
   Typography,
   styled,
+  Button,
 } from '@mui/material';
+import axios from 'axios';
+import { API_URL } from '../../config';
 
 // Interfaces
 interface OrbitData {
@@ -38,14 +40,38 @@ interface OrbitData {
 }
 
 interface AdvancedTableProps {
-  data: OrbitData[] | null | undefined;
+  data: {
+    orbits: OrbitData[];
+    body: string;
+  }
+
   isCanonical: boolean;
   onSelectionChange?: (selectedRows: OrbitData[]) => void;
+  handlePlotData?: (plotData: any) => void;
 }
 
 interface RowSelectionState {
   [key: string]: boolean;
 }
+
+interface FunctionParams {
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  period: number;
+  mu: number;
+}
+
+interface BodyDetails {
+  body: {
+  mu: number;
+  distance: number;
+  period: number;
+  }[];
+  }
 
 // Styled Components
 const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
@@ -72,9 +98,11 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
   data,
   isCanonical,
   onSelectionChange,
+  handlePlotData,
 }) => {
   // Ensure data is always an array
-  const safeData = useMemo(() => data || [], [data]);
+  const safeData = useMemo(() => data.orbits || [], [data]);
+  const body = data.body;
 
   // State Hooks
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -83,10 +111,12 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
     pageIndex: 0,
     pageSize: 50,
   });
+  const [isLoadingOrbits, setIsLoadingOrbits] = useState(false);
+  const [mu, setMu] = useState(0);
 
   // Memoized Selected Rows Calculation
   const getSelectedRows = useCallback(
-    (selection: Record<string, boolean>) => 
+    (selection: Record<string, boolean>) =>
       safeData.filter((row, index) => selection[index]),
     [safeData]
   );
@@ -192,89 +222,218 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
     );
   }
 
+  const loadAllOrbits = async (paramsList: FunctionParams[]) => {
+    try {
+      if (!paramsList || paramsList.length === 0) {
+        throw new Error('No parameters provided for orbit processing');
+      }
+
+      const results = await Promise.all(
+        paramsList.map(async (params) => {
+          try {
+            return await loadOrbit(params);
+          } catch (error) {
+            console.error(`Error processing params: ${JSON.stringify(params)}`, error);
+            // Return null or a specific error object instead of throwing
+            return {
+              error: true,
+              params,
+              message: error instanceof Error ? error.message : 'Unknown error'
+            };
+          }
+        })
+      );
+      // Filter out or handle error results as needed
+      return results.filter(result => !result.error);
+    } catch (error) {
+      console.error('Error processing multiple orbits:', error);
+      throw error;
+    }
+  };
+
+
+  const loadOrbit = async (params: FunctionParams) => {
+    try {
+      const { x, y, z, vx, vy, vz, period, mu } = params;
+      const response = await axios.post<any>(`${ API_URL }/orbits/propagate/`, {
+        x: x,
+        y: y,
+        z: z,
+        vx: vx,
+        vy: vy,
+        vz: vz,
+        period: period,
+        mu: mu,
+        method: 'RK45',
+        centered: false,
+        N: 1000,
+        atol: 1e-12,
+        rtol: 1e-12
+      });
+
+      if (!response.data) {
+        throw new Error('No data returned from orbit processing');
+      }
+      return response.data;
+
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error('Axios error:', error.response?.data);
+      } else {
+        console.error('Unexpected error processing orbit:', error);
+      }
+      throw error;
+    }
+  };
+
+  const plotOrbits = async () => {
+    setIsLoadingOrbits(true);
+    try {
+    const selectedRows = getSelectedRows(rowSelection);
+    if (!body) {
+      console.error('No body information available');
+      return;
+    }
+  
+    try {
+      const response = await axios.get<BodyDetails>(`${API_URL}/bodies/${body}`);
+      if (response.data.body && response.data.body.length > 0) {
+        setMu(response.data.body[0].mu);
+      } else {
+        throw new Error('No body details found');
+      }
+    } catch (err) {
+      console.error('Error fetching body details:', err);
+      return;
+    }
+  
+    const paramsList: FunctionParams[] = selectedRows.map(row => ({
+      x: row.x0,
+      y: row.y0,
+      z: row.z0,
+      vx: row.vx0,
+      vy: row.vy0,
+      vz: row.vz0,
+      period: row.period,
+      mu: mu
+    }));
+    
+    try {
+      const results = await loadAllOrbits(paramsList);
+      const plotData = results.map((result, index) => {
+        if (result.error) {
+          console.error(`Error processing orbit ${index}:`, result.message);
+          return null;
+        }
+        return JSON.parse(result.data);
+      }
+      );
+      handlePlotData?.(plotData);
+    } catch (error) {
+      console.error('Error loading orbits:', error);
+    }
+  } catch (error) {
+    console.error('Unexpected error in plotOrbits:', error);
+  }
+  finally {
+    setIsLoadingOrbits(false);
+  }
+};
   return (
     <Box sx={{ width: '100%' }}>
-      <StyledTableContainer component={Paper}>
-        <Table stickyHeader size="small">
-          <TableHead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableCell
-                    key={header.id}
-                    onClick={header.column.getToggleSortingHandler()}
-                    sx={{
-                      cursor: header.column.getCanSort() ? 'pointer' : 'default',
-                      '&::after': {
-                        content: 'none',
-                        marginLeft: '4px',
-                        display: 'inline-block',
-                      },
-                      ...(header.column.getIsSorted() && {
+      <Box sx={{ width: '100%' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2, padding: 1 }}>
+          <Button variant="contained" color="primary" sx={{ margin: 2 }} onClick={plotOrbits} disabled = {isLoadingOrbits}>
+            Plot orbits
+          </Button>
+          <Button variant="contained" color="primary" sx={{ margin: 2 }}>
+            Download initial conditions
+          </Button>
+        </Box>
+      </Box>
+      <Box sx={{ width: '100%' }}>
+        <StyledTableContainer>
+          <Table stickyHeader size="small">
+            <TableHead>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableCell
+                      key={header.id}
+                      onClick={header.column.getToggleSortingHandler()}
+                      sx={{
+                        cursor: header.column.getCanSort() ? 'pointer' : 'default',
                         '&::after': {
-                          content: `"${
-                            header.column.getIsSorted() === 'desc' ? ' ▼' : ' ▲'
-                          }"`,
+                          content: 'none',
+                          marginLeft: '4px',
+                          display: 'inline-block',
                         },
-                      }),
-                    }}
-                  >
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableHead>
-          <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                sx={{
-                  backgroundColor: row.getIsSelected()
-                    ? 'action.selected'
-                    : 'inherit',
-                  '&:hover': {
-                    backgroundColor: 'action.hover',
-                  },
-                }}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </StyledTableContainer>
-      
-      <TablePagination
-        rowsPerPageOptions={[10, 25, 50, 100]}
-        component="div"
-        count={safeData.length}
-        rowsPerPage={pagination.pageSize}
-        page={Math.min(pagination.pageIndex, Math.ceil(safeData.length / pagination.pageSize) - 1)}
-        onPageChange={(_, newPage) => {
-          table.setPageIndex(newPage);
-        }}
-        onRowsPerPageChange={(event) => {
-          const newPageSize = parseInt(event.target.value, 10);
-          table.setPageSize(newPageSize);
-        }}
-      />
+                        ...(header.column.getIsSorted() && {
+                          '&::after': {
+                            content: `"${header.column.getIsSorted() === 'desc' ? ' ▼' : ' ▲'
+                              }"`,
+                          },
+                        }),
+                      }}
+                    >
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHead>
+            <TableBody>
+              {table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  sx={{
+                    backgroundColor: row.getIsSelected()
+                      ? 'action.selected'
+                      : 'inherit',
+                    '&:hover': {
+                      backgroundColor: 'action.hover',
+                    },
+                  }}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </StyledTableContainer>
+
+        <TablePagination
+          rowsPerPageOptions={[10, 25, 50, 100]}
+          component="div"
+          count={safeData.length}
+          rowsPerPage={pagination.pageSize}
+          page={Math.min(pagination.pageIndex, Math.ceil(safeData.length / pagination.pageSize) - 1)}
+          onPageChange={(_, newPage) => {
+            table.setPageIndex(newPage);
+          }}
+          onRowsPerPageChange={(event) => {
+            const newPageSize = parseInt(event.target.value, 10);
+            table.setPageSize(newPageSize);
+          }}
+        />
+      </Box>
     </Box>
   );
 });
 
 // Wrapper Component
-const OrbitDataDisplay: React.FC<AdvancedTableProps> = ({ 
-  data, 
-  isCanonical, 
-  onSelectionChange 
+const OrbitDataDisplay: React.FC<AdvancedTableProps> = ({
+  data,
+  isCanonical,
+  onSelectionChange,
+  handlePlotData,
 }) => {
 
   // Default empty selection handler if not provided
@@ -284,12 +443,12 @@ const OrbitDataDisplay: React.FC<AdvancedTableProps> = ({
     },
     [onSelectionChange]
   );
-
   return (
     <AdvancedTable
-      data={data? data.orbits : []}
+      data={data || []}
       isCanonical={isCanonical}
       onSelectionChange={handleSelectionChange}
+      handlePlotData={handlePlotData}
     />
   );
 };

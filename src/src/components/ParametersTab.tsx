@@ -9,7 +9,6 @@ import {
   Container,
   CircularProgress,
   Alert,
-  Divider,
   TextField,
   Grid,
 } from '@mui/material';
@@ -51,9 +50,9 @@ interface OrbitParametersProps {
   }) => void;
 }
 
-const ParametersTab: React.FC<OrbitParametersProps> = ({ 
-  data, 
-  onParameterChange 
+const ParametersTab: React.FC<OrbitParametersProps> = ({
+  data,
+  onParameterChange
 }) => {
   // State for body details and editable parameters
   const [bodyDetails, setBodyDetails] = useState<BodyDetails | null>(null);
@@ -154,7 +153,7 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
     };
 
     setEditableParameters(updatedParameters);
-    
+
     onParameterChange?.({
       [field]: numValue,
     });
@@ -186,30 +185,30 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
           <Tab label="Orbit Limits" />
         </Tabs>
       </Box>
-      
+
       {/* First Tab - Body Parameters */}
       <TabPanel value={tabValue} index={0}>
         <Container maxWidth="md">
           <Stack spacing={2}>
             <Stack spacing={2}>
-              <ParameterDisplay 
-                label="Mass Ratio" 
-                value={bodyDetails?.mu} 
+              <ParameterDisplay
+                label="Mass Ratio"
+                value={bodyDetails?.mu}
               />
-              <ParameterDisplay 
-                label="Longitude Unit" 
-                value={bodyDetails?.distance} 
+              <ParameterDisplay
+                label="Longitude Unit"
+                value={bodyDetails?.distance}
               />
-              <ParameterDisplay 
-                label="Period" 
-                value={bodyDetails?.period} 
+              <ParameterDisplay
+                label="Period"
+                value={bodyDetails?.period}
                 unit="days"
               />
             </Stack>
           </Stack>
         </Container>
       </TabPanel>
-      
+
       {/* Second Tab - Editable Orbit Limits */}
       <TabPanel value={tabValue} index={1}>
         <Container maxWidth="md">
@@ -301,8 +300,8 @@ const ParameterDisplay: React.FC<{
   value: number | null | undefined;
   unit?: string;
 }> = ({ label, value, unit = '' }) => {
-  const formattedValue = value !== null && value !== undefined 
-    ? value.toFixed(6) 
+  const formattedValue = value !== null && value !== undefined
+    ? value.toFixed(6)
     : 'N/A';
 
   return (

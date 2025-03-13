@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Paper,
   Table,
   TableBody,
   TableCell,
@@ -76,7 +75,7 @@ const CorrectorTable: React.FC<OrbitTableProps> = ({
   };
 
   return (
-    <StyledTableContainer component={Paper}>
+    <StyledTableContainer>
       <Table stickyHeader size="small">
         <TableHead>
           <TableRow>
@@ -119,8 +118,14 @@ const CorrectorTable: React.FC<OrbitTableProps> = ({
   );
 };
 
+
+
 // Example usage with parent component
-const CorrectorDataDisplay: React.FC = () => {
+const CorrectorDataDisplay: React.FC<OrbitTableProps>  = ({ 
+  data, 
+  isCanonical, 
+  conversionFactors 
+}) => {
   // Sample data
   const sampleData: TableData[] = [
     {
@@ -135,17 +140,21 @@ const CorrectorDataDisplay: React.FC = () => {
     // Add more rows as needed
   ];
 
+
+
   // Example conversion factors
-  const conversionFactors = {
+  const defaultConversionFactors = {
     length: 384400, // Example: 1 L.U = 384400 km (Earth-Moon system)
     time: 375190,   // Example: 1 T.U = 375190 seconds
   };
 
+  const effectiveConversionFactors = conversionFactors || defaultConversionFactors;
+
   return (
     <CorrectorTable
       data={sampleData}
-      isCanonical={true}
-      conversionFactors={conversionFactors}
+      isCanonical={isCanonical}
+      conversionFactors={effectiveConversionFactors}
     />
   );
 };
