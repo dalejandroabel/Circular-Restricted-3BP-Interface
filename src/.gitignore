@@ -12,6 +12,9 @@ package-lock.json
 dist
 dist-ssr
 .env
+package.json
+vite.config.ts
+
 
 # Editor directories and files
 .vscode/*
