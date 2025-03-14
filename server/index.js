@@ -18,7 +18,7 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
 
-var con = mysql.createConnection({
+var con = mysql.createConnection({  
   host: "localhost",
   user: process.env.USERDB,
   password: process.env.PASSWORDDB,
@@ -63,6 +63,16 @@ app.get("/api/families/:id", (req, res) => {
   } else if (sourcedb == 12) {
     query = `SELECT * FROM families WHERE sourcedb = 12 OR sourcedb = 1 OR sourcedb = 2`;
   }
+  con.query(query, function (err, result, fields) {
+    if (err) throw err;
+    res.json({ families: result });
+  }
+  );
+}
+);
+
+app.get("/api/families/", (req, res) => {
+  let query = `SELECT * FROM families`;
   con.query(query, function (err, result, fields) {
     if (err) throw err;
     res.json({ families: result });
@@ -134,6 +144,28 @@ app.get("/api/bodies/:body", (req, res) => {
 }
 );
 
+app.get("/api/initialconditions/:body", (req, res) => {
+  const body = req.params.body;
+  let query = `SELECT * FROM bodies WHERE id_body = ${body}`;
+  con.query(query, function (err, result, fields) {
+    if (err) throw err;
+    sourcedb = result[0].sourcedb;
+    if (sourcedb == "1" || sourcedb == "12") {
+      query = `SELECT * FROM orbits WHERE id_body = ${body} AND source = 1`;
+    }
+    if (sourcedb == "2") {
+      query = `SELECT * FROM orbits WHERE id_body = ${body} AND source = 2`;
+    }
+    con.query(query, function (err, result, fields) {
+      if (err) throw err;
+      res.json({ initialconditions: result });
+    }
+    );
+  }
+  );
+}
+);
+
 app.post("/api/orbits/propagate/", (req, res) => {
   const x = req.body.x;
   const y = req.body.y;
@@ -149,8 +181,8 @@ app.post("/api/orbits/propagate/", (req, res) => {
   const N = req.body.N;
   const centered = req.body.centered;
 
-  const pythonProcess = spawn("../.crtbpenv/bin/python3", ["python_scripts/physics.py","Propagate",
-     x, y, z, vx, vy, vz,mu,period, method, atol, rtol, N, centered]);
+  const pythonProcess = spawn("../.crtbpenv/bin/python3", ["python_scripts/physics.py", "Propagate",
+    x, y, z, vx, vy, vz, mu, period, method, atol, rtol, N, centered]);
   let dataToSend = "";
 
   pythonProcess.stdout.on("data", (data) => {

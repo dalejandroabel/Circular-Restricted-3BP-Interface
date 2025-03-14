@@ -51,14 +51,11 @@ const CircularRestrictedThreeBody: React.FC = () => {
   const [isCanonical, setIsCanonical] = useState(true);
   const  [data, setData] = useState(null);
   const [plotData, setPlotData] = useState(null);
+  const [icData, setICData] = useState(null);
   
 
-  const handleDataLoaded = (loadedData) => {
-    setData(loadedData);
-  }
-  const handlePlotData = (plotData) => {
-    setPlotData(plotData);
-  }
+
+
   
   return (
     <PageContainer>
@@ -75,14 +72,20 @@ const CircularRestrictedThreeBody: React.FC = () => {
       <MainContent>
         {/* Left column - System configuration */}
         <Box sx={{ gridRow: 'span 2' }}>
-          <SystemForm onDataLoaded = {handleDataLoaded}/>
+          <SystemForm 
+          onDataLoaded = {setData}
+          onIcDataLoaded = {setICData}
+          handlePlotData = {setPlotData}/>
           <ParametersTab 
           data={data} />
         </Box>
 
         {/* Plots section - Contains both plots */}
         <PlotsSection>
-          <PlotTabs />
+          <PlotTabs 
+          initialConditions = {icData}
+          database='1'
+          tableData={data}/>
           <OrbitDisplay 
             isCanonical={isCanonical} 
             onUnitsChange={setIsCanonical}
@@ -104,7 +107,7 @@ const CircularRestrictedThreeBody: React.FC = () => {
         <OrbitsTableDisplay 
           isCanonical={isCanonical}
           data={data}
-          handlePlotData={handlePlotData}
+          handlePlotData={setPlotData}
         />
       </BottomTableSection>
     </PageContainer>

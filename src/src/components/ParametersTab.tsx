@@ -36,6 +36,7 @@ interface BodyDetails {
   mu: number;
   distance: number;
   period: number;
+  body: any;
 }
 
 interface OrbitParametersProps {
@@ -87,7 +88,6 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
 
       try {
         const response = await axios.get<BodyDetails>(`${API_URL}/bodies/${data.body}`);
-        console.log(response.data.body[0]);
         setBodyDetails(response.data.body[0]);
       } catch (err) {
         setError('Failed to fetch body details');

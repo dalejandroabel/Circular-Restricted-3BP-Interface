@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Button,
@@ -33,26 +33,40 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
   isCanonical,
   setIsCanonical,
   plotData }) => {
+
+  const [orbitsPlotData, setOrbitPlotData] = useState([{
+      x: [],
+      y: [],
+      type: 'scatter',
+      mode: 'lines',
+      hovertemplate: 'x: %{x}<br>vy: %{y}',
+      customdata: [[]],
+      name: ""
+    }]);
   
     useEffect(() => {
+      if (!plotData) {
+        return;
+      }
       const fetchPlotData = async () => {
-        console.log(plotData);
+
+      const dataToPlot = plotData.map((orbit: any) => {
+        return {
+          x: orbit.x,
+          y: orbit.y,
+          type: '',
+          mode: 'lines',
+          hovertemplate: 'x: %{x}<br>y: %{y}',
+          customdata: [[]],
+          name: ""
+        };
+        });
+        setOrbitPlotData(dataToPlot);
       };
   
       fetchPlotData();
     }, [plotData]);
 
-  // Sample plot data
-  const ex_plotData = {
-    x: [1, 2, 3, 4],
-    y: [10, 15, 13, 17],
-    type: 'scatter',
-    mode: 'lines',
-    line: {
-      color: '#2196f3',
-      width: 2,
-    },
-  };
 
   const handleUnitsChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setIsCanonical(event.target.checked);
@@ -77,26 +91,17 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
         overflow: 'hidden'
       }}>
         <Plot
-          data={[ex_plotData]}
+          data={orbitsPlotData}
           layout={{
-            width: undefined,
-            height: undefined,
-            margin: { t: 10, b: 40, l: 40, r: 10 },
-            showlegend: false,
-            plot_bgcolor: '#f5f5f5',
-            paper_bgcolor: '#f5f5f5',
-            xaxis: {
-              showgrid: true,
-              gridcolor: '#e0e0e0',
+            legend: {
+              xanchor: 'right',
+              x: 0.9,
             },
-            yaxis: {
-              showgrid: true,
-              gridcolor: '#e0e0e0',
-            },
+            
+            margin: { t: 10, b: 40, l: 10, r: 10 },
           }}
           config={{
             responsive: true,
-            displayModeBar: false,
           }}
           style={{
             width: '100%',

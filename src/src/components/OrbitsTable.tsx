@@ -37,6 +37,7 @@ interface OrbitData {
   period: number;
   jc: number;
   stability_index: number;
+  source: number;
 }
 
 interface AdvancedTableProps {
@@ -63,6 +64,7 @@ interface FunctionParams {
   vz: number;
   period: number;
   mu: number;
+  centered: boolean;
 }
 
 interface BodyDetails {
@@ -90,8 +92,11 @@ const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
 
 // Utility Functions
 const formatValue = (value: number): string => {
-  return value.toFixed(6);
+  return value.toFixed(8);
 };
+const formatInt = (value: number): string => {
+  return value.toFixed(0);
+}
 
 // Main Table Component
 const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
@@ -189,6 +194,10 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
         header: `Jacobi Constant`,
         cell: (info) => formatValue(info.getValue()),
       }),
+      columnHelper.accessor('source', {
+        header: `database`,
+        cell: (info) => formatInt(info.getValue()),
+      })
     ],
     [isCanonical]
   );
@@ -254,7 +263,7 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
 
   const loadOrbit = async (params: FunctionParams) => {
     try {
-      const { x, y, z, vx, vy, vz, period, mu } = params;
+      const { x, y, z, vx, vy, vz, period, mu, centered } = params;
       const response = await axios.post<any>(`${ API_URL }/orbits/propagate/`, {
         x: x,
         y: y,
@@ -265,7 +274,7 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
         period: period,
         mu: mu,
         method: 'RK45',
-        centered: false,
+        centered: centered,
         N: 1000,
         atol: 1e-12,
         rtol: 1e-12
@@ -315,7 +324,8 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
       vy: row.vy0,
       vz: row.vz0,
       period: row.period,
-      mu: mu
+      mu: mu,
+      centered: row.source == 2
     }));
     
     try {
@@ -339,6 +349,37 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
     setIsLoadingOrbits(false);
   }
 };
+
+const downloadConditions = () => {
+  const selectedRows = getSelectedRows(rowSelection);
+
+  if (selectedRows.length === 0) {
+    console.warn('No rows selected');
+    return;
+  }
+  const csvContent = [
+    "id,x0,y0,z0,vx0,vy0,vz0,period,jc,stability_index",
+    ...selectedRows.map(row => 
+      `${row.id},${row.x0},${row.y0},${row.z0},${row.vx0},${row.vy0},${row.vz0},${row.period},${row.jc},${row.stability_index}`
+    )
+  ].join('\n');
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  
+  const link = document.createElement('a');
+  
+  const filename = `initial_conditions.csv`;
+  const url = URL.createObjectURL(blob);
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  
+  // Append to body, click, and remove
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
   return (
     <Box sx={{ width: '100%' }}>
       <Box sx={{ width: '100%' }}>
@@ -346,7 +387,7 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
           <Button variant="contained" color="primary" sx={{ margin: 2 }} onClick={plotOrbits} disabled = {isLoadingOrbits}>
             Plot orbits
           </Button>
-          <Button variant="contained" color="primary" sx={{ margin: 2 }}>
+          <Button variant="contained" color="primary" sx={{ margin: 2 }} onClick = {downloadConditions}>
             Download initial conditions
           </Button>
         </Box>

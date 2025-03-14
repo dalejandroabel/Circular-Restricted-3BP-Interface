@@ -26,13 +26,28 @@ interface ApiResponse {
   }>;
   resonances?: { p: string; q: string; }[];
   orbits?: any;
+  initialconditions?: {
+    x0: string,
+    y0: string,
+    z0: string,
+    vx0: string,
+    vy0: string,
+    vz0: string,
+    period: string,
+    id_family: string,
+    stability_index: string,
+    jacobi_constant: string
+  }[];
+
 }
 
 interface SystemFormProps {
   onDataLoaded: (data: any) => void;
+  onIcDataLoaded: (data: any) => void;
+  handlePlotData: (data: any) => void;
 }
 
-const SystemForm: React.FC<SystemFormProps> = ({ onDataLoaded }) => {
+const SystemForm: React.FC<SystemFormProps> = ({ onDataLoaded, onIcDataLoaded, handlePlotData }) => {
   const [primaryBody, setPrimaryBody] = useState<string>('');
   const [secondaryBody, setSecondaryBody] = useState<string>('');
   const [family, setFamily] = useState<string>('');
@@ -253,7 +268,7 @@ const SystemForm: React.FC<SystemFormProps> = ({ onDataLoaded }) => {
   };
 
   const handleLoadOrbits = async () => {
-    
+
     try {
 
       console.log('Loading orbits with:', {
@@ -272,7 +287,26 @@ const SystemForm: React.FC<SystemFormProps> = ({ onDataLoaded }) => {
       const response = await axios.get<ApiResponse>(`${API_URL}/orbits/?S=${secondaryBody}&F=${family}&P=${formattedP}&Q=${formattedQ}&L=${formattedLibration}&B=${formattedBatch}`);
       const data = response.data;
       onDataLoaded(data);
-      
+
+      const response_ic = await axios.get<ApiResponse>(`${API_URL}/initialconditions/${secondaryBody}`);
+
+      const ic_data = response_ic.data;
+      let ic_data_modified = {
+        x: ic_data.initialconditions?.map((ic) => Number(ic.x0)),
+        y: ic_data.initialconditions?.map((ic) => Number(ic.y0)),
+        z: ic_data.initialconditions?.map((ic) => Number(ic.z0)),
+        vx: ic_data.initialconditions?.map((ic) => Number(ic.vx0)),
+        vy: ic_data.initialconditions?.map((ic) => Number(ic.vy0)),
+        vz: ic_data.initialconditions?.map((ic) => Number(ic.vz0)),
+        period: ic_data.initialconditions?.map((ic) => Number(ic.period)),
+        family: ic_data.initialconditions?.map((ic) => Number(ic.id_family)),
+        stability_index: ic_data.initialconditions?.map((ic) => Number(ic.stability_index)),
+        jacobi_constant: ic_data.initialconditions?.map((ic) => Number(ic.jacobi_constant)),
+      }
+      onIcDataLoaded(ic_data_modified);
+      handlePlotData([]);
+
+
     }
     catch (error) {
       console.error('Error fetching orbits:', error);
