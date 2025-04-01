@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   FormControl,
@@ -45,9 +45,15 @@ interface SystemFormProps {
   onDataLoaded: (data: any) => void;
   onIcDataLoaded: (data: any) => void;
   handlePlotData: (data: any) => void;
+  handleBody: (data: any) => void;
 }
 
-const SystemForm: React.FC<SystemFormProps> = ({ onDataLoaded, onIcDataLoaded, handlePlotData }) => {
+const SystemForm: React.FC<SystemFormProps> = ({
+  onDataLoaded,
+  onIcDataLoaded,
+  handlePlotData,
+  handleBody
+}) => {
   const [primaryBody, setPrimaryBody] = useState<string>('');
   const [secondaryBody, setSecondaryBody] = useState<string>('');
   const [family, setFamily] = useState<string>('');
@@ -306,7 +312,8 @@ const SystemForm: React.FC<SystemFormProps> = ({ onDataLoaded, onIcDataLoaded, h
       onIcDataLoaded(ic_data_modified);
       handlePlotData([]);
 
-
+      const body = await axios.get(`${API_URL}/bodies/${secondaryBody}`);
+      handleBody(body.data.body[0]);
     }
     catch (error) {
       console.error('Error fetching orbits:', error);

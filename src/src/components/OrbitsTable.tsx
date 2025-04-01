@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useContext } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -24,6 +24,7 @@ import {
 } from '@mui/material';
 import axios from 'axios';
 import { API_URL } from '../../config';
+import BodyContext from './contexts';
 
 // Interfaces
 interface OrbitData {
@@ -49,6 +50,7 @@ interface AdvancedTableProps {
   isCanonical: boolean;
   onSelectionChange?: (selectedRows: OrbitData[]) => void;
   handlePlotData?: (plotData: any) => void;
+  handleIcData?: (icData: any) => void;
 }
 
 interface RowSelectionState {
@@ -104,10 +106,11 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
   isCanonical,
   onSelectionChange,
   handlePlotData,
+  handleIcData,
 }) => {
   // Ensure data is always an array
   const safeData = useMemo(() => data.orbits || [], [data]);
-  const body = data.body;
+  
 
   // State Hooks
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -117,7 +120,8 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
     pageSize: 50,
   });
   const [isLoadingOrbits, setIsLoadingOrbits] = useState(false);
-  const [mu, setMu] = useState(0);
+  const body = useContext(BodyContext);
+  
 
   // Memoized Selected Rows Calculation
   const getSelectedRows = useCallback(
@@ -232,6 +236,17 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
   }
 
   const loadAllOrbits = async (paramsList: FunctionParams[]) => {
+    const orbitParamsArray = paramsList.map((params) => {
+      const orbitParams = {
+        x: params.x,
+        vy: params.vy,
+        vz: params.vz,
+        period: params.period,
+      };
+      return orbitParams;
+    });
+
+    handleIcData?.(orbitParamsArray);
     try {
       if (!paramsList || paramsList.length === 0) {
         throw new Error('No parameters provided for orbit processing');
@@ -295,26 +310,12 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
     }
   };
 
+
   const plotOrbits = async () => {
     setIsLoadingOrbits(true);
     try {
     const selectedRows = getSelectedRows(rowSelection);
-    if (!body) {
-      console.error('No body information available');
-      return;
-    }
-  
-    try {
-      const response = await axios.get<BodyDetails>(`${API_URL}/bodies/${body}`);
-      if (response.data.body && response.data.body.length > 0) {
-        setMu(response.data.body[0].mu);
-      } else {
-        throw new Error('No body details found');
-      }
-    } catch (err) {
-      console.error('Error fetching body details:', err);
-      return;
-    }
+    const mu = body.mu;
   
     const paramsList: FunctionParams[] = selectedRows.map(row => ({
       x: row.x0,
@@ -339,6 +340,8 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
       }
       );
       handlePlotData?.(plotData);
+      
+      
     } catch (error) {
       console.error('Error loading orbits:', error);
     }
@@ -475,6 +478,7 @@ const OrbitDataDisplay: React.FC<AdvancedTableProps> = ({
   isCanonical,
   onSelectionChange,
   handlePlotData,
+  handleIcData
 }) => {
 
   // Default empty selection handler if not provided
@@ -490,6 +494,7 @@ const OrbitDataDisplay: React.FC<AdvancedTableProps> = ({
       isCanonical={isCanonical}
       onSelectionChange={handleSelectionChange}
       handlePlotData={handlePlotData}
+      handleIcData={handleIcData}
     />
   );
 };

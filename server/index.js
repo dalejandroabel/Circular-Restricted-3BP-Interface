@@ -18,7 +18,7 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
 
-var con = mysql.createConnection({  
+var con = mysql.createConnection({
   host: "localhost",
   user: process.env.USERDB,
   password: process.env.PASSWORDDB,
@@ -109,12 +109,10 @@ app.get("/api/orbits/", (req, res) => {
   const libration = req.query.L;
   const batch = req.query.B;
   let query = `SELECT * FROM orbits WHERE id_body = ${body} AND id_family = ${family}`;
-  if (p != "0") {
-    query += ` AND p = ${p}`;
+  if (p != "0" && q != "0") {
+    query += ` AND resonance = '${p}:${q}'`;
   }
-  if (q != "0") {
-    query += ` AND q = ${q}`;
-  }
+
   if (libration != "-1") {
     query += ` AND libration = '${libration}'`;
   }
@@ -198,6 +196,80 @@ app.post("/api/orbits/propagate/", (req, res) => {
     res.json({ data: dataToSend });
   });
 });
+
+app.post("/api/orbits/correct/", (req, res) => {
+  const x = req.body.x;
+  const y = req.body.y;
+  const z = req.body.z;
+  const vx = req.body.vx;
+  const vy = req.body.vy;
+  const vz = req.body.vz;
+  const mu = req.body.mu;
+  const period = req.body.period;
+  const centered = req.body.centered;
+
+  const pythonProcess = spawn("../.crtbpenv/bin/python3", ["python_scripts/physics.py", "Correct",
+    x, y, z, vx, vy, vz, mu, period, centered]);
+  let dataToSend = "";
+  pythonProcess.stdout.on("data", (data) => {
+    dataToSend += data.toString();
+  });
+
+  pythonProcess.stderr.on("data", (data) => {
+    console.error(`stderr: ${data}`);
+  });
+
+
+  pythonProcess.on("close", (code) => {
+    res.json({ data: dataToSend });
+  });
+
+})
+
+app.get("/api/orbits/lagrange/:body", (req, res) => {
+  const body = req.params.body;
+
+  let query = `SELECT * FROM bodies WHERE id_body = ${body}`;
+  con.query(query, function (err, result, fields) {
+    if (err) throw err;
+    mu = result[0].mu;
+    const pythonProcess = spawn("../.crtbpenv/bin/python3", ["python_scripts/physics.py", "Lagrange",
+      mu]);
+    let dataToSend = "";
+    pythonProcess.stdout.on("data", (data) => {
+      dataToSend += data.toString();
+    });
+    pythonProcess.stderr.on("data", (data) => {
+      console.error(`stderr: ${data}`);
+    });
+    pythonProcess.on("close", (code) => {
+      res.json({ data: dataToSend });
+    });
+    }
+    );
+  }
+  );
+
+app.post("/api/orbits/sphere/", (req, res) => {
+  const R = req.body.R;
+  const pythonProcess = spawn("../.crtbpenv/bin/python3", ["python_scripts/physics.py", "Sphere",
+    R]);
+  let dataToSend = "";
+  pythonProcess.stdout.on("data", (data) => {
+    dataToSend += data.toString();
+  });
+
+  pythonProcess.stderr.on("data", (data) => {
+    console.error(`stderr: ${data}`);
+  });
+
+
+  pythonProcess.on("close", (code) => {
+    res.json({ data: dataToSend });
+  });
+}
+);
+
 
 
 app.listen(PORT, () => {

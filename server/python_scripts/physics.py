@@ -191,12 +191,36 @@ class dc():
         X_new = X.copy()
 
         STM, X_mid, t = self._propagate_mid_half(X_new, mu, t)
-        if abs(X_mid[1]) > 1e-11 or abs(X_mid[3]) > 1e-11:
+        if abs(X_mid[1]) > 1e-10 or abs(X_mid[3]) > 1e-10:
             STM, X_mid, t = self._propagate_mid_half(
                 X_new, mu, t)
             Xdot = self._EoM(0, X_mid, mu)
             X_new = self._DiffCorrectFixed(STM, Xdot, X_mid, fixed, X_new)
+            data = json.dumps({
+            "x": X_new[0],
+            "y": X_new[1],
+            "z": X_new[2],
+            "vx": X_new[3],
+            "vy": X_new[4],
+            "vz": X_new[5],
+            "period":t,
+            "deltax": abs(X[0]-X_new[0]),
+            "deltavy": abs(X[4]-X_new[4]),
+            "deltavz": abs(X[5]-X_new[5])})
+            print(data)
             return X_new, t
+        data = json.dumps({
+            "x": X_new[0],
+            "y": X_new[1],
+            "z": X_new[2],
+            "vx": X_new[3],
+            "vy": X_new[4],
+            "vz": X_new[5],
+            "period":t,
+            "deltax": abs(X[0]-X_new[0]),
+            "deltavy": abs(X[4]-X_new[4]),
+            "deltavz": abs(X[5]-X_new[5])})
+        print(data)
         return X_new, t
 
     def DiffCorrector(self):
@@ -216,3 +240,33 @@ class dc():
 if __name__ == "__main__":
     if sys.argv[1] == "Propagate":
         Propagate()
+    
+    if sys.argv[1] == "Correct":
+        x = float(sys.argv[2])
+        y = float(sys.argv[3])
+        z = float(sys.argv[4])
+        vx = float(sys.argv[5])
+        vy = float(sys.argv[6])
+        vz = float(sys.argv[7])
+        mu = float(sys.argv[8])
+        period = float(sys.argv[9])
+        centered = False if sys.argv[10] == "false" else True
+
+        X = np.array([x,y,z,vx,vy,vz])
+
+        system = dc(mu,X,period)
+        system.DiffCorrectorSteps(X,period,"x")
+    if sys.argv[1] == "Lagrange":
+        mu = float(sys.argv[2])
+        L1, L2, L3 = LagrangePoints(mu)
+        data = json.dumps({"L1": L1, "L2": L2, "L3": L3})
+        print(data)
+
+    if sys.argv[1] == "Sphere":
+        R2 = float(sys.argv[2])
+        x_data, y_data, z_data = ms(0, 0, 0, R2)
+        data = json.dumps({"x": x_data.tolist(), "y": y_data.tolist(), "z": z_data.tolist()})
+        print(data)
+    
+
+    

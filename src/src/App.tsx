@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState} from 'react';
 import { Box, Typography, styled } from '@mui/material';
 import SystemForm from './components/SystemForm';
 import ParametersTab from './components/ParametersTab';
@@ -6,6 +6,10 @@ import PlotTabs from './components/PlotTabs';
 import OrbitDisplay from './components/OrbitDisplay';
 import CorrectorTable from './components/CorrectorTable';
 import OrbitsTableDisplay from './components/OrbitsTable';
+import BodyContext from './components/contexts';
+import orbitIcon from './assets/orbit.svg';
+
+
 
 
 const PageContainer = styled(Box)(({ theme }) => ({
@@ -52,15 +56,17 @@ const CircularRestrictedThreeBody: React.FC = () => {
   const  [data, setData] = useState(null);
   const [plotData, setPlotData] = useState(null);
   const [icData, setICData] = useState(null);
-  
-
+  const [plotDataIc,setPlotDataIc] = useState(null);
+  const [correctordata, setCorrectorData] = useState(null);
+  const [body, setBody] = useState(null);
 
 
   
   return (
     <PageContainer>
+      <BodyContext.Provider value={body}>
       <Header>
-        <img src="/path-to-icon.png" alt="Orbit icon" width={32} height={32} />
+        <img src={orbitIcon} alt="Orbit icon" width={46} height={46} />
         <Typography variant="h4" component="h1">
           Circular Restricted Three Body Problem Orbits
         </Typography>
@@ -70,12 +76,14 @@ const CircularRestrictedThreeBody: React.FC = () => {
         Lorem ipsum dolor sit amet, consectetur adipiscing elit...
       </Typography>
       <MainContent>
+      
         {/* Left column - System configuration */}
         <Box sx={{ gridRow: 'span 2' }}>
           <SystemForm 
           onDataLoaded = {setData}
           onIcDataLoaded = {setICData}
-          handlePlotData = {setPlotData}/>
+          handlePlotData = {setPlotData}
+          handleBody = {setBody}/>
           <ParametersTab 
           data={data} />
         </Box>
@@ -85,12 +93,17 @@ const CircularRestrictedThreeBody: React.FC = () => {
           <PlotTabs 
           initialConditions = {icData}
           database='1'
-          tableData={data}/>
+          tableData={data}
+          setPlotData={setPlotData}
+          setPlotDataIc={setPlotDataIc}/>
+          
           <OrbitDisplay 
             isCanonical={isCanonical} 
             onUnitsChange={setIsCanonical}
             setIsCanonical={setIsCanonical}
             plotData={plotData}
+            icData={plotDataIc}
+            setCorrectorData = {setCorrectorData}
           />
         </PlotsSection>
 
@@ -98,6 +111,9 @@ const CircularRestrictedThreeBody: React.FC = () => {
         <TablesSection>
           <CorrectorTable 
             isCanonical={isCanonical}
+            correctordata = {correctordata}
+            setPlotData={setPlotData}
+            setPlotDataIc={setPlotDataIc}
           />
         </TablesSection>
       </MainContent>
@@ -108,8 +124,10 @@ const CircularRestrictedThreeBody: React.FC = () => {
           isCanonical={isCanonical}
           data={data}
           handlePlotData={setPlotData}
+          handleIcData={setPlotDataIc}
         />
       </BottomTableSection>
+      </BodyContext.Provider>
     </PageContainer>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   Box,
   Tabs,
@@ -12,7 +12,7 @@ import {
 import Plot from 'react-plotly.js';
 import { COLORS, API_URL } from '../../config';
 import axios from 'axios';
-import { Height } from '@mui/icons-material';
+import BodyContext from './contexts';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -24,6 +24,8 @@ interface PlotTabsProps {
   initialConditions: any;
   database: string;
   tableData: any;
+  setPlotData: any;
+  setPlotDataIc: any;
 }
 
 const StyledBox = styled(Box)(({ theme }) => ({
@@ -42,8 +44,9 @@ const DropdownContainer = styled(Box)(({ theme }) => ({
 
 // Sample data for the dropdowns
 const databases = ['Database 1', 'Database 2', 'Database 3'];
-const axisVariables = ["X", "Vy", "Vz", "Period","Stability index","Jacobi constant" ];
+const axisVariables = ["X", "Vy", "Vz", "Period", "Stability index", "Jacobi constant"];
 const columns = ["x", "vy", "vz", "period", "stability_index", "jacobi_constant"];
+const columns_par = ["x0", "vy0", "vz0", "period", "stability_index", "jc"]
 const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
   <div role="tabpanel" hidden={value !== index}>
     {value === index && <Box>{children}</Box>}
@@ -53,7 +56,9 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
 const PlotTabs: React.FC<PlotTabsProps> = ({
   initialConditions,
   database,
-  tableData
+  tableData,
+  setPlotData,
+  setPlotDataIc
 }) => {
   const [tabValue, setTabValue] = useState(0);
   const [selectedDatabase, setSelectedDatabase] = useState('');
@@ -66,6 +71,8 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
     margin: { t: 10, b: 10, l: 10, r: 10 },
     showlegend: true,
   });
+
+  const body = useContext(BodyContext);
   const [xAxis, setXAxis] = useState('');
   const [yAxis, setYAxis] = useState('');
   const [plotParametricData, setPlotParametricData] = useState([{ x: [], y: [] }]);
@@ -103,13 +110,15 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
       font: { size: 10 },
       margin: { t: 10, b: 10, l: 10, r: 10 },
       showlegend: true,
-      xaxis: { title: 'X',
+      xaxis: {
+        title: 'X',
         zeroline: false,
 
-       },
-      yaxis: { title: 'VY',
+      },
+      yaxis: {
+        title: 'VY',
         zeroline: false,
-       },
+      },
       updatemenus: [
         {
           type: 'buttons',
@@ -160,12 +169,12 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
   const get3DLayout = () => {
 
     const layout = {
-      scene : {
-        xaxis: {title: 'X', showspikes: false, mirror: false, showline: true},
-        yaxis: {title: 'VY', showspikes: false, mirror: false, showline: true},
-        zaxis: {title: 'VZ', showspikes: false, mirror: false, showline: true},
+      scene: {
+        xaxis: { title: 'X', showspikes: false, mirror: false, showline: true },
+        yaxis: { title: 'VY', showspikes: false, mirror: false, showline: true },
+        zaxis: { title: 'VZ', showspikes: false, mirror: false, showline: true },
         aspectmode: 'cube',
-        aspectratio: {x: 1, y: 1, z: 1},
+        aspectratio: { x: 1, y: 1, z: 1 },
         camera: {
           eye: {
             x: 1.3,
@@ -259,9 +268,13 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
     }
     const getParametricData = (xAxis: string, yAxis: string) => {
       const modifiedData = modifyData(tableData);
-      console.log(modifiedData);
       const xData = modifiedData[columns[axisVariables.indexOf(xAxis)] as keyof typeof modifiedData];
       const yData = modifiedData[columns[axisVariables.indexOf(yAxis)]];
+
+      const remainingColumns = columns.filter(
+        (col) => col !== columns[axisVariables.indexOf(xAxis)] && col !== columns[axisVariables.indexOf(yAxis)]
+      );
+      const customData = xData.map((_: any, idx: string | number) => remainingColumns.slice(0, 2).map((col) => modifiedData[col][idx]));
       return [{
         x: xData,
         y: yData,
@@ -271,19 +284,21 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
           size: 2,
           color: 'rgb(25,25,25)'
         },
+        customdata: customData,
+        hovertemplate: `x: %{x}<br>y: %{y}<br>${remainingColumns[0]}: %{customdata[0]}<br>${remainingColumns[1]}: %{customdata[1]}`
       }];
     };
 
     const getParametricLayout = (xAxis: string, yAxis: string) => {
       const layout = {
-      height: 400,
-      font: { size: 10 },
-      margin: { t: 10, b: 40, l: 10, r: 10 },
-      showlegend: false,
-      xaxis: { title: xAxis, zeroline: false },
-      yaxis: { title: yAxis, zeroline: false },
-    }
-    return layout;
+        height: 400,
+        font: { size: 10 },
+        margin: { t: 10, b: 40, l: 10, r: 10 },
+        showlegend: false,
+        xaxis: { title: xAxis, zeroline: false },
+        yaxis: { title: yAxis, zeroline: false },
+      }
+      return layout;
     };
 
     const plotData = getParametricData(xAxis, yAxis);
@@ -309,6 +324,118 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
     setYAxis(event.target.value);
   };
 
+  const handlePlotClick = async (clickedData: any) => {
+    if (!clickedData) {
+      console.error('No data point clicked');
+      return;
+    }
+
+    const clickedPoint = clickedData.points[0];
+    const clickedX = clickedPoint.x;
+    const clickedVY = clickedPoint.y;
+    const clickedVz = clickedPoint.customdata[0];
+    const clickedPeriod = clickedPoint.customdata[1];
+
+    const orbitParams = {
+      x: clickedX,
+      vy: clickedVY,
+      vz: clickedVz,
+      period: clickedPeriod,
+    };
+
+    try {
+      const mu = body.mu;
+
+      const orbitResponse = await axios.post<any>(`${API_URL}/orbits/propagate/`,{
+        x: orbitParams.x,
+        y: 0,
+        z: 0,
+        vx: 0,
+        vy: orbitParams.vy,
+        vz: orbitParams.vz,
+        period: orbitParams.period,
+        mu: mu,
+        centered: false,
+        method: 'RK45',
+        N: 1000,
+        atol: 1e-12,
+        rtol: 1e-12,
+      });
+      const orbitData = orbitResponse.data.data;
+      setPlotData([JSON.parse(orbitData)]);
+      setPlotDataIc({
+        x: orbitParams.x,
+        y: 0,
+        z: 0,
+        vx: 0,
+        vy: orbitParams.vy,
+        vz: orbitParams.vz,
+        period: orbitParams.period,
+        mu: mu
+      })
+
+    } catch (error) {
+      console.error('Error handling plot click:', error);
+    }
+
+
+  };
+
+  const handleParameterClick = async (clickedData: any) => {
+    if (!clickedData) {
+      console.error("No data point clicked");
+      return;
+    }
+    const clickedPoint = clickedData.points[0];
+    const clickedX = clickedPoint.x;
+    const clickedY = clickedPoint.y;
+
+    const xColumn = columns_par[axisVariables.indexOf(xAxis)];
+    const yColumn = columns_par[axisVariables.indexOf(yAxis)];
+
+    const filteredOrbit = tableData.orbits.find((orbit: any) =>
+      orbit[xColumn] == clickedX &&
+      orbit[yColumn] == clickedY);
+
+    if (!filteredOrbit) {
+      console.error("No matching orbit found");
+      return;
+    }
+
+
+    try {
+      const mu = body.mu;
+      const orbitResponse = await axios.post<any>(`${API_URL}/orbits/propagate/`, {
+        x: filteredOrbit.x0,
+        y: filteredOrbit.y0,
+        z: filteredOrbit.z0,
+        vx: filteredOrbit.vx0,
+        vy: filteredOrbit.vy0,
+        vz: filteredOrbit.vz0,
+        period: filteredOrbit.period,
+        mu: mu,
+        centered: false,
+        method: 'RK45',
+        N: 1000,
+        atol: 1e-12,
+        rtol: 1e-12,
+      });
+      const orbitData = orbitResponse.data.data;
+      setPlotData([JSON.parse(orbitData),]);
+      setPlotDataIc({
+        x: filteredOrbit.x0,
+        y: filteredOrbit.y0,
+        z: filteredOrbit.z0,
+        vx: filteredOrbit.vx0,
+        vy: filteredOrbit.vy0,
+        vz: filteredOrbit.vz0,
+        period: filteredOrbit.period,
+        mu: mu
+      });
+    } catch (error) {
+      console.error('Error handling parameter click:', error);
+    }
+  }
   return (
     <Box sx={{ width: '100%' }}>
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -325,6 +452,9 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
             layout={plotIcLayout}
             config={{ responsive: true }}
             style={{ width: '100%', height: '100%' }}
+            onClick={(data_) => {
+              handlePlotClick(data_);
+            }}
 
           />
           <DropdownContainer>
@@ -356,6 +486,10 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
             layout={plotParametricLayout}
             config={{ responsive: true }}
             style={{ width: '100%', height: '100%' }}
+            onClick={(data_) => {
+              handleParameterClick(data_);
+            }}
+
           />
           <DropdownContainer>
             <FormControl sx={{ minWidth: 200 }}>
