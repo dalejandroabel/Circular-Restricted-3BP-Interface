@@ -95,8 +95,10 @@ const CircularRestrictedThreeBody: React.FC = () => {
               <CorrectorTable
                 isCanonical={isCanonical}
                 correctordata={correctordata}
+                conversionFactors={{ length: 1, time: 1 }}
                 setPlotData={setPlotData}
                 setPlotDataIc={setPlotDataIc}
+                data={data}
               />
             </Grid2>
           </Grid2>

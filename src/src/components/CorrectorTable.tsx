@@ -59,7 +59,7 @@ const CorrectorTable: React.FC<CorrectorTableProps> = ({
     return type === 'length' ? '[km]' : '[km/s]';
   };
 
-  
+
   const convertValue = (
     value: number,
     type: 'length' | 'velocity'
@@ -87,75 +87,75 @@ const CorrectorTable: React.FC<CorrectorTableProps> = ({
   }
 
   return (
-    <Box sx= {{width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-    <StyledTableContainer>
-      <Table stickyHeader size="small">
-        <TableHead>
-          <TableRow>
-            <StyledTableCell>Iteration</StyledTableCell>
-            <StyledTableCell>x {getUnitLabel('length')}</StyledTableCell>
-            <StyledTableCell>vy {getUnitLabel('velocity')}</StyledTableCell>
-            <StyledTableCell>vz {getUnitLabel('velocity')}</StyledTableCell>
-            <StyledTableCell>δx {getUnitLabel('length')}</StyledTableCell>
-            <StyledTableCell>δvy {getUnitLabel('velocity')}</StyledTableCell>
-            <StyledTableCell>δvz {getUnitLabel('velocity')}</StyledTableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {data.map((row) => (
-            <TableRow key={row.iteration}>
-              <StyledTableCell>{row.iteration}</StyledTableCell>
-              <StyledTableCell>
-                {formatValue(convertValue(row.x, 'length'))}
-              </StyledTableCell>
-              <StyledTableCell>
-                {formatValue(convertValue(row.vy, 'velocity'))}
-              </StyledTableCell>
-              <StyledTableCell>
-                {formatValue(convertValue(row.vz, 'velocity'))}
-              </StyledTableCell>
-              <StyledTableCell>
-                {formatExponential(convertValue(row.deltaX, 'length'))}
-              </StyledTableCell>
-              <StyledTableCell>
-                {formatExponential(convertValue(row.deltaVy, 'velocity'))}
-              </StyledTableCell>
-              <StyledTableCell>
-                {formatExponential(convertValue(row.deltaVz, 'velocity'))}
-              </StyledTableCell>
+    <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <StyledTableContainer>
+        <Table stickyHeader size="small">
+          <TableHead>
+            <TableRow>
+              <StyledTableCell>Iteration</StyledTableCell>
+              <StyledTableCell>x {getUnitLabel('length')}</StyledTableCell>
+              <StyledTableCell>vy {getUnitLabel('velocity')}</StyledTableCell>
+              <StyledTableCell>vz {getUnitLabel('velocity')}</StyledTableCell>
+              <StyledTableCell>δx {getUnitLabel('length')}</StyledTableCell>
+              <StyledTableCell>δvy {getUnitLabel('velocity')}</StyledTableCell>
+              <StyledTableCell>δvz {getUnitLabel('velocity')}</StyledTableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </StyledTableContainer>
-    <Box display="flex" justifyContent="center" marginTop={2}>
-      <button
-      onClick={() => {
-        if (data.length > 0) {
-        const finalConditions = data[data.length - 1];
-        const blob = new Blob([JSON.stringify(finalConditions, null, 2)], {
-          type: 'application/json',
-        });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'final_conditions.json';
-        link.click();
-        URL.revokeObjectURL(url);
-        }
-      }}
-      style={{
-        backgroundColor: '#1976d2',
-        color: 'white',
-        padding: '0.5rem 1rem',
-        border: 'none',
-        borderRadius: '4px',
-        cursor: 'pointer',
-      }}
-      >
-      Download Final Conditions
-      </button>
-    </Box>
+          </TableHead>
+          <TableBody>
+            {data.map((row) => (
+              <TableRow key={row.iteration}>
+                <StyledTableCell>{row.iteration}</StyledTableCell>
+                <StyledTableCell>
+                  {formatValue(convertValue(row.x, 'length'))}
+                </StyledTableCell>
+                <StyledTableCell>
+                  {formatValue(convertValue(row.vy, 'velocity'))}
+                </StyledTableCell>
+                <StyledTableCell>
+                  {formatValue(convertValue(row.vz, 'velocity'))}
+                </StyledTableCell>
+                <StyledTableCell>
+                  {formatExponential(convertValue(row.deltaX, 'length'))}
+                </StyledTableCell>
+                <StyledTableCell>
+                  {formatExponential(convertValue(row.deltaVy, 'velocity'))}
+                </StyledTableCell>
+                <StyledTableCell>
+                  {formatExponential(convertValue(row.deltaVz, 'velocity'))}
+                </StyledTableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </StyledTableContainer>
+      <Box display="flex" justifyContent="center" marginTop={2}>
+        <button
+          onClick={() => {
+            if (data.length > 0) {
+              const finalConditions = data[data.length - 1];
+              const blob = new Blob([JSON.stringify(finalConditions, null, 2)], {
+                type: 'application/json',
+              });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = 'final_conditions.json';
+              link.click();
+              URL.revokeObjectURL(url);
+            }
+          }}
+          style={{
+            backgroundColor: '#1976d2',
+            color: 'white',
+            padding: '0.5rem 1rem',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+          }}
+        >
+          Download Final Conditions
+        </button>
+      </Box>
     </Box>
   );
 };
@@ -175,9 +175,14 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
   const [tabledata, setTableData] = useState<CorrectorTableData[]>([]);
   const body = useContext<any>(BodyContext);
 
+  conversionFactors = conversionFactors || {
+    length: body.distance / 1000,
+    time: body.period * 3600 * 24,
+  }
+
   useEffect(() => {
     if (!correctordata) return;
-  
+
     const correctedPlotData = async () => {
 
       try {
@@ -224,9 +229,9 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
           lastData.iteration > 0)
       ) {
         console.log("Stopping condition met");
-        return; 
+        return;
       }
-      
+
       try {
         const response = await axios.post(`${API_URL}/orbits/correct/`, {
           x: lastData.x,
@@ -254,12 +259,12 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
         await new Promise(resolve => setTimeout(resolve, 1000));
         if (
           newCorrectorData.deltax === 0 &&
-            newCorrectorData.deltavy === 0 &&
-            newCorrectorData.deltavz === 0 
+          newCorrectorData.deltavy === 0 &&
+          newCorrectorData.deltavz === 0
 
-        ){
+        ) {
           console.log("Stopping condition met");
-          return; 
+          return;
         }
         setTableData(newData);
         await updateTableData(newData);
@@ -267,13 +272,13 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
         console.error("Error fetching corrector data", error);
       }
     };
-  
+
     // Start with the initial data
     setTableData([correctordata]);
     updateTableData([correctordata]);
 
   }, [correctordata]);
-  
+
 
 
   // Example conversion factors
@@ -290,8 +295,8 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
       isCanonical={isCanonical}
       conversionFactors={effectiveConversionFactors}
       correctordata={undefined}
-      setPlotData={setPlotData} 
-      setPlotDataIc={setPlotDataIc}/>
+      setPlotData={setPlotData}
+      setPlotDataIc={setPlotDataIc} />
   );
 };
 

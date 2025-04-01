@@ -42,27 +42,27 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
       try {
         let lagrangeLen = 2;
         let maxCoords = [0, 0, 0];
-    
+
         // Calculate maxCoords from orbit data
         plotData.forEach((orbit: any) => {
           if (!orbit.x || !orbit.y || !orbit.z) return;
-    
+
           const _validX = orbit.x.filter((val: number) => typeof val === "number" && !isNaN(val));
           const validY = orbit.y.filter((val: number) => typeof val === "number" && !isNaN(val));
           const validZ = orbit.z.filter((val: number) => typeof val === "number" && !isNaN(val));
 
           const validX = _validX.map((val: number) => val - (1 - body.mu));
-    
+
           if (validX.length) maxCoords[0] = Math.max(maxCoords[0], ...validX);
           if (validY.length) maxCoords[1] = Math.max(maxCoords[1], ...validY);
           if (validZ.length) maxCoords[2] = Math.max(maxCoords[2], ...validZ);
         });
-    
+
         // Get Lagrange points from API
         const { data: Lagrange } = await axios.get(`${API_URL}/orbits/lagrange/${body.id_body}`);
         const LagrangeData = JSON.parse(Lagrange.data);
-        const [L1, L2, L3] = [LagrangeData.L1 - (1-body.mu), LagrangeData.L2 - (1-body.mu), LagrangeData.L3 - (1-body.mu)];
-    
+        const [L1, L2, L3] = [LagrangeData.L1 - (1 - body.mu), LagrangeData.L2 - (1 - body.mu), LagrangeData.L3 - (1 - body.mu)];
+
         // Create orbit traces with line style (as in Python: black, width 1, mode "lines")
         const orbitTraces = plotData
           .filter((orbit: any) => orbit.x && orbit.y && orbit.z)
@@ -82,7 +82,7 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
               name: `Orbit ${index + 1}`,
             };
           });
-    
+
         // Fetch R2 sphere data from API and create its trace
         const { data: R2_sphere_ } = await axios.post(`${API_URL}/orbits/sphere/`, { R: R2 });
         const R2_sphere = JSON.parse(R2_sphere_.data);
@@ -104,7 +104,7 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
         if (lagrangeLen === 3 && maxCoords[0] < Math.abs(L3)) {
           maxCoords[0] = Math.abs(L3);
         }
-    
+
         // Fetch R1 sphere if required (only if lagrangeLen is 3)
         let R1SphereTrace = null;
         if (lagrangeLen === 3) {
@@ -123,7 +123,7 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
             showscale: false,
           };
         }
-    
+
         // Create Lagrange points trace
         const LagrangeTrace = {
           x: [L1, L2, L3].slice(0, lagrangeLen),
@@ -137,7 +137,7 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
           hoverinfo: "skip",
           name: "Lagrange points",
         };
-    
+
         // Combine all traces in the order: orbits, spheres, then Lagrange points
         const dataToPlot = [
           ...orbitTraces,
@@ -146,7 +146,7 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
           LagrangeTrace,
         ];
 
-    
+
         // Determine axis limits (similar to Python: limit based on maxCoords and factor)
         const factor = 1.1;
         const limit = Math.max(...maxCoords);
@@ -164,45 +164,45 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
           legend: { xanchor: "right", x: 0.9 },
           margin: { t: 0, b: 0, l: 0, r: 0, pad: 0 },
         });
-    
+
         setOrbitPlotData(dataToPlot);
       } catch (error) {
         console.error("Error in plot generation:", error);
       }
     };
-    
-  fetchPlotData();
-}, [plotData]);
-  
+
+    fetchPlotData();
+  }, [plotData]);
+
 
 
   const handleUnitsChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setIsCanonical(event.target.checked);
   };
 
-const handleCloseOrbit = async () => {
-  if (!icData) {
-    return;
-  }
-  if (Array.isArray(icData)) {
-    icData = icData[0];
-  }
-  let currentData = {
-    iteration: 0,
-    x: icData.x,
-    vy: icData.vy,
-    vz: icData.vz,
-    period: icData.period,
-    deltaX: 0,
-    deltaVy: 0,
-    deltaVz: 0,
+  const handleCloseOrbit = async () => {
+    if (!icData) {
+      return;
+    }
+    if (Array.isArray(icData)) {
+      icData = icData[0];
+    }
+    let currentData = {
+      iteration: 0,
+      x: icData.x,
+      vy: icData.vy,
+      vz: icData.vz,
+      period: icData.period,
+      deltaX: 0,
+      deltaVy: 0,
+      deltaVz: 0,
+    };
+
+    setCorrectorData(currentData); // Set initial data in the table
   };
 
-  setCorrectorData(currentData); // Set initial data in the table
-};
-
   return (
-    <Box sx = {{display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%'}}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
       <Typography variant="h6" component="h2">
         Orbit display
       </Typography>
@@ -226,7 +226,7 @@ const handleCloseOrbit = async () => {
         />
       </Box>
 
-      <Box sx={{display: 'flex',justifyContent:"center", alignItems: 'center', width: '100%', padding: 0, gap: 10}}>
+      <Box sx={{ display: 'flex', justifyContent: "center", alignItems: 'center', width: '100%', padding: 0, gap: 10 }}>
         <Button
           variant="contained"
           onClick={handleCloseOrbit}

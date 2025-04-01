@@ -26,7 +26,7 @@ import {
 import axios from 'axios';
 import { API_URL } from '../../config';
 import BodyContext from './contexts';
-import { FunctionParams, AdvancedTableProps,OrbitData, RowSelectionState } from './types';
+import { FunctionParams, AdvancedTableProps, OrbitData, RowSelectionState } from './types';
 // Styled Components
 const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
   maxHeight: 600,
@@ -60,7 +60,7 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
   isLoading
 }) => {
   // Ensure data is always an array
-  const safeData = useMemo(() => data.orbits || [], [data]);
+  const safeData = useMemo(() => data?.orbits || [], [data]);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState({
@@ -69,7 +69,7 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
   });
   const [isLoadingOrbits, setIsLoadingOrbits] = useState(false);
   const body = useContext<any>(BodyContext);
-  
+
 
   // Memoized Selected Rows Calculation
   const getSelectedRows = useCallback(
@@ -164,7 +164,13 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
       pagination,
     },
     enableRowSelection: true,
-    onRowSelectionChange: handleSelectionChange,
+    onRowSelectionChange: (updaterOrValue) => {
+      const updatedRowSelection =
+        typeof updaterOrValue === 'function'
+          ? updaterOrValue(rowSelection)
+          : updaterOrValue;
+      handleSelectionChange(updatedRowSelection);
+    },
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
@@ -175,8 +181,8 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
   // Render loading or empty state
   if (!safeData.length) {
     return (
-      <Box sx={{ width: '100%', textAlign: 'center', py: 4, display: 'flex',alignItems: 'center' }}>
-        <Typography sx = {{width: '100%'}} variant="h6" color="textSecondary">
+      <Box sx={{ width: '100%', textAlign: 'center', py: 4, display: 'flex', alignItems: 'center' }}>
+        <Typography sx={{ width: '100%' }} variant="h6" color="textSecondary">
           No orbit data available
         </Typography>
       </Box>
@@ -227,7 +233,7 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
   const loadOrbit = async (params: FunctionParams) => {
     try {
       const { x, y, z, vx, vy, vz, period, mu, centered } = params;
-      const response = await axios.post<any>(`${ API_URL }/orbits/propagate/`, {
+      const response = await axios.post<any>(`${API_URL}/orbits/propagate/`, {
         x: x,
         y: y,
         z: z,
@@ -262,74 +268,74 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
   const plotOrbits = async () => {
     setIsLoadingOrbits(true);
     try {
-    const selectedRows = getSelectedRows(rowSelection);
-    const mu = body.mu;
-  
-    const paramsList: FunctionParams[] = selectedRows.map(row => ({
-      x: row.x0,
-      y: row.y0,
-      z: row.z0,
-      vx: row.vx0,
-      vy: row.vy0,
-      vz: row.vz0,
-      period: row.period,
-      mu: mu,
-      centered: row.source == 2
-    }));
-    
-    try {
-      const results = await loadAllOrbits(paramsList);
-      const plotData = results.map((result, index) => {
-        if (result.error) {
-          console.error(`Error processing orbit ${index}:`, result.message);
-          return null;
+      const selectedRows = getSelectedRows(rowSelection);
+      const mu = body.mu;
+
+      const paramsList: FunctionParams[] = selectedRows.map(row => ({
+        x: row.x0,
+        y: row.y0,
+        z: row.z0,
+        vx: row.vx0,
+        vy: row.vy0,
+        vz: row.vz0,
+        period: row.period,
+        mu: mu,
+        centered: row.source == 2
+      }));
+
+      try {
+        const results = await loadAllOrbits(paramsList);
+        const plotData = results.map((result, index) => {
+          if (result.error) {
+            console.error(`Error processing orbit ${index}:`, result.message);
+            return null;
+          }
+          return JSON.parse(result.data);
         }
-        return JSON.parse(result.data);
+        );
+        handlePlotData?.(plotData);
+
+
+      } catch (error) {
+        console.error('Error loading orbits:', error);
       }
-      );
-      handlePlotData?.(plotData);
-      
-      
     } catch (error) {
-      console.error('Error loading orbits:', error);
+      console.error('Unexpected error in plotOrbits:', error);
     }
-  } catch (error) {
-    console.error('Unexpected error in plotOrbits:', error);
-  }
-  finally {
-    setIsLoadingOrbits(false);
-  }
-};
+    finally {
+      setIsLoadingOrbits(false);
+    }
+  };
 
   const downloadConditions = () => {
-  const selectedRows = getSelectedRows(rowSelection);
+    const selectedRows = getSelectedRows(rowSelection);
 
-  if (selectedRows.length === 0) {
-    console.warn('No rows selected');
-    return;
-  }
-  const csvContent = [
-    "id,x0,y0,z0,vx0,vy0,vz0,period,jc,stability_index",
-    ...selectedRows.map(row => 
-      `${row.id},${row.x0},${row.y0},${row.z0},${row.vx0},${row.vy0},${row.vz0},${row.period},${row.jc},${row.stability_index}`
-    )
-  ].join('\n');
+    if (selectedRows.length === 0) {
+      console.warn('No rows selected');
+      return;
+    }
+    const csvContent = [
+      "id,x0,y0,z0,vx0,vy0,vz0,period,jc,stability_index",
+      ...selectedRows.map(row =>
+        `${row.id},${row.x0},${row.y0},${row.z0},${row.vx0},${row.vy0},${row.vz0},${row.period},${row.jc},${row.stability_index}`
+      )
+    ].join('\n');
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  
-  const link = document.createElement('a');
-  
-  const filename = `initial_conditions.csv`;
-  const url = URL.createObjectURL(blob);
-  
-  link.setAttribute('href', url);
-  link.setAttribute('download', filename);
-  
-  // Append to body, click, and remove
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+    const link = document.createElement('a');
+
+    const filename = `initial_conditions.csv`;
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+
+    // Append to body, click, and remove
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
   if (isLoading) {
     return (
       <Box sx={{ width: '100%', textAlign: 'center', py: 4 }}>
@@ -337,8 +343,8 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
           Loading...
         </Typography>
         <Box display="flex" justifyContent="center" alignItems="center" height="200px">
-              <CircularProgress />
-       </Box> 
+          <CircularProgress />
+        </Box>
       </Box>
     );
   }
@@ -347,15 +353,15 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
     <Box sx={{ width: '100%' }}>
       <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2, padding: 1, width: '90%' }}>
-          <Button variant="contained" color="primary" sx={{ margin: 2 }} onClick={plotOrbits} disabled = {isLoadingOrbits}>
+          <Button variant="contained" color="primary" sx={{ margin: 2 }} onClick={plotOrbits} disabled={isLoadingOrbits}>
             Plot orbits
           </Button>
-          <Button variant="contained" color="primary" sx={{ margin: 2 }} onClick = {downloadConditions}>
+          <Button variant="contained" color="primary" sx={{ margin: 2 }} onClick={downloadConditions}>
             Download initial conditions
           </Button>
         </Box>
       </Box>
-      <Box sx={{ width: '90%', display: 'flex',flexDirection: 'column', justifyContent: 'center', margin: '0 auto' }}>
+      <Box sx={{ width: '90%', display: 'flex', flexDirection: 'column', justifyContent: 'center', margin: '0 auto' }}>
         <StyledTableContainer>
           <Table stickyHeader size="small">
             <TableHead>
@@ -451,7 +457,7 @@ const OrbitDataDisplay: React.FC<AdvancedTableProps> = ({
   );
   return (
     <AdvancedTable
-      data={data || []}
+      data={data || null}
       isCanonical={isCanonical}
       onSelectionChange={handleSelectionChange}
       handlePlotData={handlePlotData}
