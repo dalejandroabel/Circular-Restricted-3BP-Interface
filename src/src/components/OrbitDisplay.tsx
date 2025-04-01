@@ -5,34 +5,12 @@ import {
   Switch,
   FormControlLabel,
   Typography,
-  styled,
 } from '@mui/material';
 import Plot from 'react-plotly.js';
 import BodyContext from './contexts';
 import { API_URL } from '../../config';
 import axios from 'axios';
-
-const StyledBox = styled(Box)(({ theme }) => ({
-  padding: theme.spacing(2),
-  display: 'flex',
-  flexDirection: 'column',
-  gap: theme.spacing(2),
-}));
-
-const ControlsContainer = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  gap: theme.spacing(4),
-}));
-
-interface OrbitDisplayProps {
-  isCanonical: boolean;
-  plotData: any;
-  setIsCanonical: (isCanonical: boolean) => void;
-  onUnitsChange?: (isCanonical: boolean) => void;
-  icData: any;
-  setCorrectorData: (data: any) => void;
-}
+import { OrbitDisplayProps } from './types';
 
 const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
   isCanonical,
@@ -41,7 +19,7 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
   icData,
   setCorrectorData }) => {
 
-  const [orbitsPlotData, setOrbitPlotData] = useState([{
+  const [orbitsPlotData, setOrbitPlotData] = useState<Partial<Plotly.Data>[]>([{
     x: [],
     y: [],
     type: 'scatter',
@@ -51,7 +29,7 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
     name: ""
   }]);
   const [layout, setLayout] = useState<any>(null);
-  const body = useContext(BodyContext);
+  const body = useContext<any>(BodyContext);
   const R2 = body?.radius;
   const R1 = body?.primary_radius;
 
@@ -224,17 +202,16 @@ const handleCloseOrbit = async () => {
 };
 
   return (
-    <StyledBox>
+    <Box sx = {{display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%'}}>
       <Typography variant="h6" component="h2">
         Orbit display
       </Typography>
 
       <Box sx={{
-        width: '100%',
-        height: '400px',
+        height: '500px',
         backgroundColor: '#f5f5f5',
         borderRadius: '4px',
-        overflow: 'hidden'
+        width: '90%',
       }}>
         <Plot
           data={orbitsPlotData}
@@ -249,7 +226,7 @@ const handleCloseOrbit = async () => {
         />
       </Box>
 
-      <ControlsContainer>
+      <Box sx={{display: 'flex',justifyContent:"center", alignItems: 'center', width: '100%', padding: 0, gap: 10}}>
         <Button
           variant="contained"
           onClick={handleCloseOrbit}
@@ -297,8 +274,8 @@ const handleCloseOrbit = async () => {
             }
           />
         </Box>
-      </ControlsContainer>
-    </StyledBox>
+      </Box>
+    </Box>
   );
 };
 

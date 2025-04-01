@@ -7,40 +7,13 @@ import {
   Select,
   MenuItem,
   SelectChangeEvent,
-  styled,
 } from '@mui/material';
 import Plot from 'react-plotly.js';
 import { COLORS, API_URL } from '../../config';
 import axios from 'axios';
 import BodyContext from './contexts';
+import { TabPanelProps, PlotTabsProps } from './types';
 
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-interface PlotTabsProps {
-  initialConditions: any;
-  database: string;
-  tableData: any;
-  setPlotData: any;
-  setPlotDataIc: any;
-}
-
-const StyledBox = styled(Box)(({ theme }) => ({
-  padding: theme.spacing(2),
-  '& .MUI-FormControl': {
-    minWidth: 200,
-  },
-}));
-
-const DropdownContainer = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  gap: theme.spacing(2),
-  marginTop: theme.spacing(2),
-  justifyContent: 'center',
-}));
 
 // Sample data for the dropdowns
 const databases = ['Database 1', 'Database 2', 'Database 3'];
@@ -68,15 +41,18 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
   }]);
   const [plotIcLayout, setPlotIcLayout] = useState({
 
-    margin: { t: 10, b: 10, l: 10, r: 10 },
+    margin: { t: 40, b: 40, l: 40, r: 40 },
     showlegend: true,
   });
 
-  const body = useContext(BodyContext);
+  const body = useContext<any>(BodyContext);
   const [xAxis, setXAxis] = useState('');
   const [yAxis, setYAxis] = useState('');
   const [plotParametricData, setPlotParametricData] = useState([{ x: [], y: [] }]);
-  const [plotParametricLayout, setPlotParametricLayout] = useState({});
+  const [plotParametricLayout, setPlotParametricLayout] = useState({
+    margin: { t: 40, b: 40, l: 40, r: 40 },
+    showlegend: true,
+  });
 
   const getPlanarData = (initialConditions: any, uniqueFamilies: any, colors: string[], names: string[]) => {
 
@@ -183,7 +159,7 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
           }
         },
       },
-      margin: { t: 10, b: 10, l: 10, r: 10 },
+      margin: { t: 40, b: 40, l: 40, r: 40 },
       showlegend: true,
       updatemenus: [
         {
@@ -293,7 +269,7 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
       const layout = {
         height: 400,
         font: { size: 10 },
-        margin: { t: 10, b: 40, l: 10, r: 10 },
+        margin: { t: 40, b: 40, l: 40, r: 40 },
         showlegend: false,
         xaxis: { title: xAxis, zeroline: false },
         yaxis: { title: yAxis, zeroline: false },
@@ -308,7 +284,7 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
 
   }, [xAxis, yAxis, initialConditions]);
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
@@ -446,24 +422,23 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
       </Box>
 
       <TabPanel value={tabValue} index={0}>
-        <StyledBox>
+        <Box sx = {{height: 600}}>
           <Plot
             data={plotIcData}
             layout={plotIcLayout}
-            config={{ responsive: true }}
-            style={{ width: '100%', height: '100%' }}
+            config={{}}
+            style={{ width: '90%', height: '80%' }}
             onClick={(data_) => {
               handlePlotClick(data_);
             }}
-
           />
-          <DropdownContainer>
+         <Box>
             <FormControl fullWidth>
               <Select
                 value={selectedDatabase}
                 onChange={handleDatabaseChange}
                 displayEmpty
-                sx={{ backgroundColor: '#f5f5f5' }}
+                sx={{ backgroundColor: '#f5f5f5', width: "50%" }}
               >
                 <MenuItem value="" disabled>
                   Database
@@ -475,23 +450,23 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
                 ))}
               </Select>
             </FormControl>
-          </DropdownContainer>
-        </StyledBox>
+          </Box>
+        </Box>
       </TabPanel>
 
       <TabPanel value={tabValue} index={1}>
-        <StyledBox>
+        <Box sx={{ height: 600 }}>
           <Plot
             data={plotParametricData}
             layout={plotParametricLayout}
             config={{ responsive: true }}
-            style={{ width: '100%', height: '100%' }}
+            style={{ width: '90%', height: '80%' }}
             onClick={(data_) => {
               handleParameterClick(data_);
             }}
 
           />
-          <DropdownContainer>
+          <Box sx = {{}}>
             <FormControl sx={{ minWidth: 200 }}>
               <Select
                 value={xAxis}
@@ -526,8 +501,8 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
                 ))}
               </Select>
             </FormControl>
-          </DropdownContainer>
-        </StyledBox>
+          </Box>
+        </Box>
       </TabPanel>
     </Box>
   );

@@ -21,62 +21,12 @@ import {
   Typography,
   styled,
   Button,
+  CircularProgress,
 } from '@mui/material';
 import axios from 'axios';
 import { API_URL } from '../../config';
 import BodyContext from './contexts';
-
-// Interfaces
-interface OrbitData {
-  id: string;
-  x0: number;
-  y0: number;
-  z0: number;
-  vx0: number;
-  vy0: number;
-  vz0: number;
-  period: number;
-  jc: number;
-  stability_index: number;
-  source: number;
-}
-
-interface AdvancedTableProps {
-  data: {
-    orbits: OrbitData[];
-    body: string;
-  }
-
-  isCanonical: boolean;
-  onSelectionChange?: (selectedRows: OrbitData[]) => void;
-  handlePlotData?: (plotData: any) => void;
-  handleIcData?: (icData: any) => void;
-}
-
-interface RowSelectionState {
-  [key: string]: boolean;
-}
-
-interface FunctionParams {
-  x: number;
-  y: number;
-  z: number;
-  vx: number;
-  vy: number;
-  vz: number;
-  period: number;
-  mu: number;
-  centered: boolean;
-}
-
-interface BodyDetails {
-  body: {
-  mu: number;
-  distance: number;
-  period: number;
-  }[];
-  }
-
+import { FunctionParams, AdvancedTableProps,OrbitData, RowSelectionState } from './types';
 // Styled Components
 const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
   maxHeight: 600,
@@ -107,12 +57,10 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
   onSelectionChange,
   handlePlotData,
   handleIcData,
+  isLoading
 }) => {
   // Ensure data is always an array
   const safeData = useMemo(() => data.orbits || [], [data]);
-  
-
-  // State Hooks
   const [sorting, setSorting] = useState<SortingState>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [pagination, setPagination] = useState({
@@ -120,13 +68,13 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
     pageSize: 50,
   });
   const [isLoadingOrbits, setIsLoadingOrbits] = useState(false);
-  const body = useContext(BodyContext);
+  const body = useContext<any>(BodyContext);
   
 
   // Memoized Selected Rows Calculation
   const getSelectedRows = useCallback(
     (selection: Record<string, boolean>) =>
-      safeData.filter((row, index) => selection[index]),
+      safeData.filter((_row, index) => selection[index]),
     [safeData]
   );
 
@@ -227,8 +175,8 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
   // Render loading or empty state
   if (!safeData.length) {
     return (
-      <Box sx={{ width: '100%', textAlign: 'center', py: 4 }}>
-        <Typography variant="h6" color="textSecondary">
+      <Box sx={{ width: '100%', textAlign: 'center', py: 4, display: 'flex',alignItems: 'center' }}>
+        <Typography sx = {{width: '100%'}} variant="h6" color="textSecondary">
           No orbit data available
         </Typography>
       </Box>
@@ -353,7 +301,7 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
   }
 };
 
-const downloadConditions = () => {
+  const downloadConditions = () => {
   const selectedRows = getSelectedRows(rowSelection);
 
   if (selectedRows.length === 0) {
@@ -382,11 +330,23 @@ const downloadConditions = () => {
   link.click();
   document.body.removeChild(link);
 };
+  if (isLoading) {
+    return (
+      <Box sx={{ width: '100%', textAlign: 'center', py: 4 }}>
+        <Typography variant="h6" color="textSecondary">
+          Loading...
+        </Typography>
+        <Box display="flex" justifyContent="center" alignItems="center" height="200px">
+              <CircularProgress />
+       </Box> 
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ width: '100%' }}>
-      <Box sx={{ width: '100%' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2, padding: 1 }}>
+      <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2, padding: 1, width: '90%' }}>
           <Button variant="contained" color="primary" sx={{ margin: 2 }} onClick={plotOrbits} disabled = {isLoadingOrbits}>
             Plot orbits
           </Button>
@@ -395,7 +355,7 @@ const downloadConditions = () => {
           </Button>
         </Box>
       </Box>
-      <Box sx={{ width: '100%' }}>
+      <Box sx={{ width: '90%', display: 'flex',flexDirection: 'column', justifyContent: 'center', margin: '0 auto' }}>
         <StyledTableContainer>
           <Table stickyHeader size="small">
             <TableHead>
@@ -478,7 +438,8 @@ const OrbitDataDisplay: React.FC<AdvancedTableProps> = ({
   isCanonical,
   onSelectionChange,
   handlePlotData,
-  handleIcData
+  handleIcData,
+  isLoading
 }) => {
 
   // Default empty selection handler if not provided
@@ -495,6 +456,7 @@ const OrbitDataDisplay: React.FC<AdvancedTableProps> = ({
       onSelectionChange={handleSelectionChange}
       handlePlotData={handlePlotData}
       handleIcData={handleIcData}
+      isLoading={isLoading}
     />
   );
 };

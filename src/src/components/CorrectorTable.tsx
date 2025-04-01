@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import {
+  Box,
   Table,
   TableBody,
   TableCell,
@@ -11,29 +12,7 @@ import {
 import axios from 'axios';
 import { API_URL } from '../../config';
 import BodyContext from './contexts';
-
-interface TableData {
-  iteration: number;
-  x: number;
-  vy: number;
-  vz: number;
-  period: number;
-  deltaX: number;
-  deltaVy: number;
-  deltaVz: number;
-}
-
-interface OrbitTableProps {
-  data: TableData[];
-  isCanonical: boolean;
-  conversionFactors: {
-    length: number; // Factor to convert from L.U to km
-    time: number;   // Factor to convert from T.U to seconds
-  };
-  correctordata: any;
-  setPlotData: (data: any) => void,
-  setPlotDataIc: (data: any) => void
-}
+import { CorrectorTableData, CorrectorTableProps } from './types';
 
 const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
   maxHeight: 400,
@@ -47,9 +26,10 @@ const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
   '& .MuiTableCell-body': {
     padding: theme.spacing(1.5),
   },
+  width: '80%',
 }));
 
-const StyledTableCell = styled(TableCell)(({ theme }) => ({
+const StyledTableCell = styled(TableCell)(({ }) => ({
   fontSize: '0.875rem',
 }));
 
@@ -67,11 +47,10 @@ const formatExponential = (value: number, precision: number = 3): string => {
   const formattedValue = value.toExponential(precision);
   return formattedValue;
 }
-const CorrectorTable: React.FC<OrbitTableProps> = ({
+const CorrectorTable: React.FC<CorrectorTableProps> = ({
   data,
   isCanonical,
   conversionFactors,
-  correctordata,
 }) => {
   const getUnitLabel = (type: 'length' | 'velocity') => {
     if (isCanonical) {
@@ -92,8 +71,23 @@ const CorrectorTable: React.FC<OrbitTableProps> = ({
     }
     return value * (conversionFactors.length / conversionFactors.time);
   };
+  if (!data || data.length === 0) {
+    return (
+      <Box
+        sx={{
+          fontSize: '1.25rem',
+          fontWeight: 'bold',
+          padding: '2rem',
+          textAlign: 'center',
+        }}
+      >
+        No data available to correct, plot an orbit and click Close Orbit to correct
+      </Box>
+    )
+  }
 
   return (
+    <Box sx= {{width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
     <StyledTableContainer>
       <Table stickyHeader size="small">
         <TableHead>
@@ -134,14 +128,43 @@ const CorrectorTable: React.FC<OrbitTableProps> = ({
         </TableBody>
       </Table>
     </StyledTableContainer>
+    <Box display="flex" justifyContent="center" marginTop={2}>
+      <button
+      onClick={() => {
+        if (data.length > 0) {
+        const finalConditions = data[data.length - 1];
+        const blob = new Blob([JSON.stringify(finalConditions, null, 2)], {
+          type: 'application/json',
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'final_conditions.json';
+        link.click();
+        URL.revokeObjectURL(url);
+        }
+      }}
+      style={{
+        backgroundColor: '#1976d2',
+        color: 'white',
+        padding: '0.5rem 1rem',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+      }}
+      >
+      Download Final Conditions
+      </button>
+    </Box>
+    </Box>
   );
 };
 
 
 
 // Example usage with parent component
-const CorrectorDataDisplay: React.FC<OrbitTableProps> = ({
-  data,
+const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
+
   isCanonical,
   conversionFactors,
   correctordata,
@@ -149,8 +172,8 @@ const CorrectorDataDisplay: React.FC<OrbitTableProps> = ({
   setPlotDataIc,
 }) => {
   // Sample data
-  const [tabledata, setTableData] = useState<TableData[]>([]);
-  const body = useContext(BodyContext);
+  const [tabledata, setTableData] = useState<CorrectorTableData[]>([]);
+  const body = useContext<any>(BodyContext);
 
   useEffect(() => {
     if (!correctordata) return;
@@ -176,7 +199,7 @@ const CorrectorDataDisplay: React.FC<OrbitTableProps> = ({
           rtol: 1e-12,
         });
         const orbitData = orbitResponse.data.data;
-        setPlotData([JSON.parse(orbitData),]);
+        setPlotData([JSON.parse(orbitData)]);
         setPlotDataIc({
           x: lastData.x,
           y: 0,
@@ -191,7 +214,7 @@ const CorrectorDataDisplay: React.FC<OrbitTableProps> = ({
         console.error('Error handling parameter click:', error);
       }
     }
-    const updateTableData = async (prevData: TableData[]) => {
+    const updateTableData = async (prevData: CorrectorTableData[]) => {
       const lastData = prevData[prevData.length - 1];
       if (
         prevData.length > 9 ||

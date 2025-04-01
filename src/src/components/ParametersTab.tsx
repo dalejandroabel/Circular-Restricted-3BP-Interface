@@ -13,51 +13,15 @@ import {
   Grid,
 } from '@mui/material';
 import { API_URL } from "../../config";
-
-
-// Interfaces
-interface OrbitData {
-  orbits: {
-    id: string;
-    x0: number;
-    y0: number;
-    z0: number;
-    vx0: number;
-    vy0: number;
-    vz0: number;
-    period: number;
-    stability_index: number;
-    jc: number;
-  }[];
-  body: number;
-}
-
-interface BodyDetails {
-  mu: number;
-  distance: number;
-  period: number;
-  body: any;
-}
-
-interface OrbitParametersProps {
-  data: OrbitData | null | undefined;
-  onParameterChange?: (parameters: {
-    minPeriod?: number;
-    maxPeriod?: number;
-    minStabilityIndex?: number;
-    maxStabilityIndex?: number;
-    minJacobiConstant?: number;
-    maxJacobiConstant?: number;
-  }) => void;
-}
+import {OrbitParametersProps, BodyDetails } from './types';
 
 const ParametersTab: React.FC<OrbitParametersProps> = ({
   data,
-  onParameterChange
+  onParameterChange,
+  isLoading
 }) => {
   // State for body details and editable parameters
   const [bodyDetails, setBodyDetails] = useState<BodyDetails | null>(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
 
@@ -83,7 +47,6 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
     const fetchBodyDetails = async () => {
       if (!data?.body) return;
 
-      setLoading(true);
       setError(null);
 
       try {
@@ -93,12 +56,11 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
         setError('Failed to fetch body details');
         console.error(err);
       } finally {
-        setLoading(false);
       }
     };
 
     fetchBodyDetails();
-  }, [data?.body]);
+  }, [data]);
 
   // Memoized data processing
   const processedData = useMemo(() => {
@@ -140,7 +102,7 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
   }, [processedData]);
 
   // Handle tab change
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
@@ -160,7 +122,7 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
   };
 
   // Render loading state
-  if (loading) {
+  if (isLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" height="200px">
         <CircularProgress />
@@ -178,7 +140,7 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
   }
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ width: '100%', height: 300 }}>
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs value={tabValue} onChange={handleTabChange} aria-label="orbit parameters tabs" centered>
           <Tab label="Body Parameters" />
@@ -188,9 +150,9 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
 
       {/* First Tab - Body Parameters */}
       <TabPanel value={tabValue} index={0}>
-        <Container maxWidth="md">
-          <Stack spacing={2}>
-            <Stack spacing={2}>
+        <Container maxWidth="md" sx={{ padding: 2, height: 250, width: "100%", display: 'flex', justifyContent: 'center'}}>
+          <Stack spacing={2} sx={{ width: '100%' }}>
+            <Stack spacing={2} margin={4} sx={{ width: '100%', height: '100%', justifyContent: 'center'}}>
               <ParameterDisplay
                 label="Mass Ratio"
                 value={bodyDetails?.mu}
@@ -211,8 +173,8 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
 
       {/* Second Tab - Editable Orbit Limits */}
       <TabPanel value={tabValue} index={1}>
-        <Container maxWidth="md">
-          <Stack spacing={2}>
+        <Container maxWidth="md" sx={{ padding: 2, height: 250, width: "100%", display: 'flex', justifyContent: 'center'}}>
+          <Stack spacing={2} sx={{ width: '100%' }}>
             <Grid container spacing={2}>
               <Grid item xs={12} md={6}>
                 <TextField

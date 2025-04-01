@@ -1,58 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  FormControl,
-  InputLabel,
-  Select,
   MenuItem,
   SelectChangeEvent,
-  Button
+  Button,
+  TextField
 } from '@mui/material';
 import axios from 'axios';
 import { API_URL } from "../../config";
-
-interface SystemOption {
-  id: string;
-  name: string;
-}
-
-interface ApiResponse {
-  primaries?: { id_body: string; secondary: string; }[];
-  secondaries?: { id_body: string; secondary: string; }[];
-  families?: { id_family: string; family: string; }[];
-  family?: Array<{
-    libration?: string;
-    batch?: number;
-  }>;
-  resonances?: { p: string; q: string; }[];
-  orbits?: any;
-  initialconditions?: {
-    x0: string,
-    y0: string,
-    z0: string,
-    vx0: string,
-    vy0: string,
-    vz0: string,
-    period: string,
-    id_family: string,
-    stability_index: string,
-    jacobi_constant: string
-  }[];
-
-}
-
-interface SystemFormProps {
-  onDataLoaded: (data: any) => void;
-  onIcDataLoaded: (data: any) => void;
-  handlePlotData: (data: any) => void;
-  handleBody: (data: any) => void;
-}
+import { SystemOption, ApiResponse, SystemFormProps} from './types';
 
 const SystemForm: React.FC<SystemFormProps> = ({
   onDataLoaded,
   onIcDataLoaded,
   handlePlotData,
-  handleBody
+  handleBody,
+  handleLoading,
+  loading
 }) => {
   const [primaryBody, setPrimaryBody] = useState<string>('');
   const [secondaryBody, setSecondaryBody] = useState<string>('');
@@ -276,6 +240,7 @@ const SystemForm: React.FC<SystemFormProps> = ({
   const handleLoadOrbits = async () => {
 
     try {
+      handleLoading(true);
 
       console.log('Loading orbits with:', {
         primaryBody,
@@ -318,6 +283,9 @@ const SystemForm: React.FC<SystemFormProps> = ({
     catch (error) {
       console.error('Error fetching orbits:', error);
     }
+    finally {
+      handleLoading(false);
+    }
 
 
   };
@@ -328,146 +296,143 @@ const SystemForm: React.FC<SystemFormProps> = ({
       display: 'flex',
       flexDirection: 'column',
       gap: 2,
-      padding: 2
+      padding : 2,
+      height: 600,
+      alignItems: 'center',
     }}>
       <p style={{ fontSize: 24, fontWeight: "normal" }}>System</p>
 
       {/* Primary Body Dropdown */}
-      <FormControl fullWidth>
-        <InputLabel id="primary-body-label">Primary Body</InputLabel>
-        <Select
-          labelId="primary-body-label"
-          value={primaryBody}
-          label="Primary Body"
-          onChange={handlePrimaryChange}
-        >
-          {primaryOptions.map((option) => (
-            <MenuItem key={option.id} value={option.id}>
-              {option.name}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexDirection: 'column', width: "100%",
+        alignItems: "center"
+       }}>  
+      <TextField
+        label="Primary Body"
+        value={primaryBody}
+        onChange={(e) => handlePrimaryChange({ target: { value: e.target.value } } as SelectChangeEvent<string>)}
+        select
+        fullWidth
+        sx={{ width: "80%" }}
+      >
+        {primaryOptions.map((option) => (
+          <MenuItem key={option.id} value={option.id}>
+        {option.name}
+          </MenuItem>
+        ))}
+      </TextField>
 
       {/* Secondary Body Dropdown */}
-      <FormControl fullWidth>
-        <InputLabel id="secondary-body-label">Secondary Body</InputLabel>
-        <Select
-          labelId="secondary-body-label"
-          value={secondaryBody}
-          label="Secondary Body"
-          onChange={handleSecondaryChange}
-          disabled={!primaryBody}
-        >
-          {secondaryOptions.map((option) => (
-            <MenuItem key={option.id} value={option.id}>
-              {option.name}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <TextField
+        label="Secondary Body"
+        value={secondaryBody}
+        onChange={(e) => handleSecondaryChange({ target: { value: e.target.value } } as SelectChangeEvent<string>)}
+        select
+        fullWidth
+        disabled={!primaryBody}
+        sx={{ width: "80%" }}
+      >
+        {secondaryOptions.map((option) => (
+          <MenuItem key={option.id} value={option.id}>
+        {option.name}
+          </MenuItem>
+        ))}
+      </TextField>
 
       {/* Family Dropdown */}
-      <FormControl fullWidth>
-        <InputLabel id="family-label">Family</InputLabel>
-        <Select
-          labelId="family-label"
-          value={family}
-          label="Family"
-          onChange={handleFamilyChange}
-          disabled={!secondaryBody}
-        >
-          {familyOptions.map((option) => (
-            <MenuItem key={option.id} value={option.id}>
-              {option.name}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <TextField
+        label="Family"
+        value={family}
+        onChange={(e) => handleFamilyChange({ target: { value: e.target.value } } as SelectChangeEvent<string>)}
+        select
+        fullWidth
+        disabled={!secondaryBody}
+        sx={{ width: "80%" }}
+      >
+        {familyOptions.map((option) => (
+          <MenuItem key={option.id} value={option.id}>
+        {option.name}
+          </MenuItem>
+        ))}
+      </TextField>
 
       {/* Resonance Dropdowns for Family 9 */}
       {family == "9" && (
-        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
-          <FormControl fullWidth>
-            <InputLabel id="p-label">p</InputLabel>
-            <Select
-              labelId="p-label"
-              value={p}
-              label="p"
-              onChange={(e: SelectChangeEvent) => {
-                setP(e.target.value);
-                // Reset q when p changes
-                setQ('');
-              }}
-            >
-              {pOptions.map((option) => (
-                <MenuItem key={option.id} value={option.id}>
-                  {option.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', width: "80%" }}>
+          <TextField
+        label="p"
+        value={p}
+        onChange={(e) => {
+          setP(e.target.value);
+          // Reset q when p changes
+          setQ('');
+        }}
+        select
+        fullWidth
+          >
+        {pOptions.map((option) => (
+          <MenuItem key={option.id} value={option.id}>
+            {option.name}
+          </MenuItem>
+        ))}
+          </TextField>
 
-          <FormControl fullWidth>
-            <InputLabel id="q-label">q</InputLabel>
-            <Select
-              labelId="q-label"
-              value={q}
-              label="q"
-              disabled={!p} // Disable q until p is selected
-              onChange={(e: SelectChangeEvent) => setQ(e.target.value)}
-            >
-              {qOptions.map((option) => (
-                <MenuItem key={option.id} value={option.id}>
-                  {option.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <TextField
+        label="q"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        select
+        fullWidth
+        disabled={!p} // Disable q until p is selected
+          >
+        {qOptions.map((option) => (
+          <MenuItem key={option.id} value={option.id}>
+            {option.name}
+          </MenuItem>
+        ))}
+          </TextField>
         </Box>
       )}
 
       {/* Libration Dropdown */}
       {librationActive && (
-        <FormControl fullWidth>
-          <InputLabel id="libration-label">Libration</InputLabel>
-          <Select
-            labelId="libration-label"
-            value={libration}
-            label="Libration"
-            onChange={(e: SelectChangeEvent) => setLibration(e.target.value)}
-          >
-            {librationOptions.map((option) => (
-              <MenuItem key={option} value={option}>
-                {option}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <TextField
+          label="Libration"
+          value={libration}
+          onChange={(e) => setLibration(e.target.value)}
+          select
+          fullWidth
+          sx={{ width: "80%" }}
+        >
+          {librationOptions.map((option) => (
+        <MenuItem key={option} value={option}>
+          {option}
+        </MenuItem>
+          ))}
+        </TextField>
       )}
 
       {/* Batch Dropdown */}
       {batchActive && (
-        <FormControl fullWidth>
-          <InputLabel id="batch-label">Batch</InputLabel>
-          <Select
-            labelId="batch-label"
-            value={batch}
-            label="Batch"
-            onChange={(e: SelectChangeEvent) => setBatch(e.target.value)}
-          >
-            <MenuItem value="-1">South</MenuItem>
-            <MenuItem value="1">North</MenuItem>
-          </Select>
-        </FormControl>
+        <TextField
+          label="Batch"
+          value={batch}
+          onChange={(e) => setBatch(e.target.value)}
+          select
+          fullWidth
+          sx={{ width: "80%" }}
+        >
+          <MenuItem value="-1">South</MenuItem>
+          <MenuItem value="1">North</MenuItem>
+        </TextField>
       )}
+      </Box>
 
       {/* Load Orbits Button */}
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
         <Button
           variant="contained"
           onClick={handleLoadOrbits}
-          disabled={!isButtonEnabled()}
+          disabled={!isButtonEnabled() || loading}
           sx={{
             backgroundColor: '#3498db',
             '&:hover': {
