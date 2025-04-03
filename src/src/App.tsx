@@ -14,6 +14,7 @@ import orbitIcon from './assets/orbit.svg';
 
 const Header = styled(Box)(({ theme }) => ({
   marginBottom: theme.spacing(4),
+  marginTop: theme.spacing(4),
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -21,12 +22,10 @@ const Header = styled(Box)(({ theme }) => ({
 }));
 
 
-const PlotsSection = styled(Box)(({ theme }) => ({
+const PlotsSection = styled(Box)(({}) => ({
   display: 'grid',
   gridTemplateColumns: '3fr 2fr',
-  gap: theme.spacing(0),
-  gridColumn: '2',
-  marginTop: theme.spacing(2),
+  gap: 32
 }));
 
 const CircularRestrictedThreeBody: React.FC = () => {
@@ -41,22 +40,34 @@ const CircularRestrictedThreeBody: React.FC = () => {
 
 
 
+
   return (
-    <Box>
+    <Box
+      sx={{ml: 2, mr: 2, mt: 2, mb: 2}}>
       <Header>
-        <img src={orbitIcon} alt="Orbit icon" width={46} height={46} />
-        <Typography variant="h4" component="h1">
+        <img src={orbitIcon} alt="Orbit icon" width={52} height={52} />
+        <Typography variant="h3" component="h1" >
           Circular Restricted Three Body Problem Orbits
         </Typography>
       </Header>
 
-      <Typography variant="body1" sx={{ mb: 4 }} style={{ textAlign: "center" }}>
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit...
+      <Typography variant="body1" sx={{ ml: 10, mr: 10 }} style={{ textAlign: "center" }}>
+      Welcome to the Three-Body Problem Periodic Orbits Database, an interactive online platform designed 
+      to support the exploration and analysis of periodic orbits within the Circular Restricted Three-Body Problem (CRTBP). 
+      This tool provides access to an extensive catalog of over 700,000 pre-computed periodic orbits, sourced from JPL
+       and other databases, covering a variety of three-body systems such as Sun-Earth, Earth-Moon, Mars-Phobos, 
+       and Saturn-Titan. The interface allows users to visualize, compare, and refine orbits based on parameters
+        like the Jacobi constant, period, and stability index, with options to filter orbits by family, such as Lyapunov,
+         Halo, and Butterfly. In addition to data exploration Advanced users can access the API to retrieve data
+          programmatically, apply corrections, or generate new orbits in a professional workflow.
+           This platform is open-source and designed as both an educational tool and a research asset,
+            enabling users to gain insights into orbit dynamics and potentially discover new orbits with applications
+             in solar system exploration.
       </Typography>
       <Grid2 container>
         <BodyContext.Provider value={body}>
           {/* Left column - System configuration */}
-          <Grid2 size={3}>
+          <Grid2 size={3} sx = {{padding:4, mt: 4}}>
             <SystemForm
               onDataLoaded={setData}
               onIcDataLoaded={setICData}
@@ -70,9 +81,9 @@ const CircularRestrictedThreeBody: React.FC = () => {
           </Grid2>
 
           {/* Plots section - Contains both plots */}
-          <Grid2 size={9} sx={{ display: 'flex', flexDirection: 'column'}}>
+          <Grid2 size={9} sx={{ display: 'flex', flexDirection: 'column', paddingTop: 4}}>
 
-            <PlotsSection>
+            <PlotsSection sx = {{paddingTop: 4, paddingRight: 4}}>
               <PlotTabs
                 initialConditions={icData}
                 database='1'
@@ -91,7 +102,7 @@ const CircularRestrictedThreeBody: React.FC = () => {
             </PlotsSection>
 
             {/* First table section - Below plots */}
-            <Grid2 size={12} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Grid2 size={12} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 4 }}>
               <CorrectorTable
                 isCanonical={isCanonical}
                 correctordata={correctordata}

@@ -27,7 +27,8 @@ interface CorrectorTableProps {
     };
     correctordata: any;
     setPlotData: (data: any) => void,
-    setPlotDataIc: (data: any) => void
+    setPlotDataIc: (data: any) => void,
+    status?: string;
 }
 
 
@@ -155,7 +156,8 @@ interface ApiResponse {
         period: string,
         id_family: string,
         stability_index: string,
-        jacobi_constant: string
+        jacobi_constant: string,
+        source: string,
     }[];
 
 }

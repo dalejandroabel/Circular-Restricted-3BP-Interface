@@ -108,6 +108,8 @@ app.get("/api/orbits/", (req, res) => {
   const q = req.query.Q;
   const libration = req.query.L;
   const batch = req.query.B;
+  const LIMIT = req.query.LIMIT;
+  const database = req.query.D;
   let query = `SELECT * FROM orbits WHERE id_body = ${body} AND id_family = ${family}`;
   if (p != "0" && q != "0") {
     query += ` AND resonance = '${p}:${q}'`;
@@ -118,6 +120,12 @@ app.get("/api/orbits/", (req, res) => {
   }
   if (batch != "-1") {
     query += ` AND batch = '${batch}'`;
+  }
+  if (database != "0") {
+    query += ` AND source = '${database}'`;
+  }
+  if (LIMIT != "0") {
+    query += ` LIMIT ${LIMIT}`;
   }
   con.query(query, function (err, result, fields) {
     if (err) throw err;
@@ -148,11 +156,14 @@ app.get("/api/initialconditions/:body", (req, res) => {
   con.query(query, function (err, result, fields) {
     if (err) throw err;
     sourcedb = result[0].sourcedb;
-    if (sourcedb == "1" || sourcedb == "12") {
+    if (sourcedb == "1") {
       query = `SELECT * FROM orbits WHERE id_body = ${body} AND source = 1`;
     }
     if (sourcedb == "2") {
       query = `SELECT * FROM orbits WHERE id_body = ${body} AND source = 2`;
+    }
+    if (sourcedb == "12") {
+      query = `SELECT * FROM orbits WHERE id_body = ${body}`;
     }
     con.query(query, function (err, result, fields) {
       if (err) throw err;

@@ -15,7 +15,7 @@ import BodyContext from './contexts';
 import { CorrectorTableData, CorrectorTableProps } from './types';
 
 const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
-  maxHeight: 400,
+  maxHeight: 200,
   '& .MuiTableCell-head': {
     backgroundColor: '#1976d2',
     color: 'white',
@@ -51,23 +51,36 @@ const CorrectorTable: React.FC<CorrectorTableProps> = ({
   data,
   isCanonical,
   conversionFactors,
+  status
 }) => {
-  const getUnitLabel = (type: 'length' | 'velocity') => {
+  const getUnitLabel = (type: 'length' | 'velocity' | 'time') => {
     if (isCanonical) {
-      return type === 'length' ? '[L.U]' : '[L.U/T.U]';
+      if (type === 'length') return '[L.U]';
+      if (type === 'velocity') return '[L.U/T.U]';
+      if (type === 'time') return '[T.U]';
+    } else {
+      if (type === 'length') return '[km]';
+      if (type === 'velocity') return '[km/s]';
+      if (type === 'time') return '[s]';
     }
-    return type === 'length' ? '[km]' : '[km/s]';
+    return '';
   };
 
 
   const convertValue = (
     value: number,
-    type: 'length' | 'velocity'
+    type: 'length' | 'velocity' | 'time'
   ): number => {
     if (isCanonical) return value;
 
     if (type === 'length') {
       return value * conversionFactors.length;
+    }
+    if (type === 'velocity') {
+      return value * conversionFactors.length / conversionFactors.time;
+    }
+    if (type === 'time') {
+      return value * conversionFactors.time;
     }
     return value * (conversionFactors.length / conversionFactors.time);
   };
@@ -96,6 +109,7 @@ const CorrectorTable: React.FC<CorrectorTableProps> = ({
               <StyledTableCell>x {getUnitLabel('length')}</StyledTableCell>
               <StyledTableCell>vy {getUnitLabel('velocity')}</StyledTableCell>
               <StyledTableCell>vz {getUnitLabel('velocity')}</StyledTableCell>
+              <StyledTableCell>Period {getUnitLabel('time')}</StyledTableCell>
               <StyledTableCell>δx {getUnitLabel('length')}</StyledTableCell>
               <StyledTableCell>δvy {getUnitLabel('velocity')}</StyledTableCell>
               <StyledTableCell>δvz {getUnitLabel('velocity')}</StyledTableCell>
@@ -115,6 +129,9 @@ const CorrectorTable: React.FC<CorrectorTableProps> = ({
                   {formatValue(convertValue(row.vz, 'velocity'))}
                 </StyledTableCell>
                 <StyledTableCell>
+                  {formatValue(convertValue(row.period, 'time'))}
+                </StyledTableCell>
+                <StyledTableCell>
                   {formatExponential(convertValue(row.deltaX, 'length'))}
                 </StyledTableCell>
                 <StyledTableCell>
@@ -129,6 +146,10 @@ const CorrectorTable: React.FC<CorrectorTableProps> = ({
         </Table>
       </StyledTableContainer>
       <Box display="flex" justifyContent="center" marginTop={2}>
+        <Box sx={{ margin: 2, fontSize: '1rem', fontWeight: 'bold' }}>
+          {status}
+        </Box>
+
         <button
           onClick={() => {
             if (data.length > 0) {
@@ -166,7 +187,6 @@ const CorrectorTable: React.FC<CorrectorTableProps> = ({
 const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
 
   isCanonical,
-  conversionFactors,
   correctordata,
   setPlotData,
   setPlotDataIc,
@@ -174,20 +194,19 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
   // Sample data
   const [tabledata, setTableData] = useState<CorrectorTableData[]>([]);
   const body = useContext<any>(BodyContext);
-
-  conversionFactors = conversionFactors || {
-    length: body.distance / 1000,
-    time: body.period * 3600 * 24,
-  }
+  const [status_correction, setStatus] = useState('');
 
   useEffect(() => {
     if (!correctordata) return;
+
+    setStatus('Correcting orbit...');
 
     const correctedPlotData = async () => {
 
       try {
         const mu = body.mu;
         const lastData = tabledata[tabledata.length - 1];
+        
         const orbitResponse = await axios.post<any>(`${API_URL}/orbits/propagate/`, {
           x: lastData.x,
           y: 0,
@@ -198,7 +217,7 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
           period: lastData.period,
           mu: mu,
           centered: false,
-          method: 'RK45',
+          method: 'DOP853',
           N: 1000,
           atol: 1e-12,
           rtol: 1e-12,
@@ -213,7 +232,8 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
           vy: lastData.vy,
           vz: lastData.vz,
           period: lastData.period,
-          mu: mu
+          mu: mu,
+          centered: false,
         });
       } catch (error) {
         console.error('Error handling parameter click:', error);
@@ -221,17 +241,11 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
     }
     const updateTableData = async (prevData: CorrectorTableData[]) => {
       const lastData = prevData[prevData.length - 1];
-      if (
-        prevData.length > 9 ||
-        (lastData.deltaVy === 0 &&
-          lastData.deltaVz === 0 &&
-          lastData.deltaX === 0 &&
-          lastData.iteration > 0)
-      ) {
-        console.log("Stopping condition met");
+      if (lastData.iteration > 10) {
+        console.log("Max iterations reached");
+        setStatus('Corrector did not converge (max iterations reached)');
         return;
       }
-
       try {
         const response = await axios.post(`${API_URL}/orbits/correct/`, {
           x: lastData.x,
@@ -255,15 +269,15 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
           deltaVy: newCorrectorData.deltavy,
           deltaVz: newCorrectorData.deltavz,
         }];
-        correctedPlotData();
-        await new Promise(resolve => setTimeout(resolve, 1000));
         if (
-          newCorrectorData.deltax === 0 &&
-          newCorrectorData.deltavy === 0 &&
-          newCorrectorData.deltavz === 0
+          newCorrectorData.deltax == 0 &&
+          newCorrectorData.deltavy == 0 &&
+          newCorrectorData.deltavz == 0 &&
+          lastData.iteration > 0
 
         ) {
-          console.log("Stopping condition met");
+          await correctedPlotData();
+          setStatus('Corrector converged');
           return;
         }
         setTableData(newData);
@@ -271,6 +285,7 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
       } catch (error) {
         console.error("Error fetching corrector data", error);
       }
+
     };
 
     // Start with the initial data
@@ -283,11 +298,19 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
 
   // Example conversion factors
   const defaultConversionFactors = {
-    length: 384400, // Example: 1 L.U = 384400 km (Earth-Moon system)
-    time: 375190,   // Example: 1 T.U = 375190 seconds
+    length: 1,
+    time: 1,
   };
-
-  const effectiveConversionFactors = conversionFactors || defaultConversionFactors;
+  var effectiveConversionFactors;
+  if (!body){
+    effectiveConversionFactors = defaultConversionFactors;
+  }
+  else {
+    effectiveConversionFactors = {
+      length: body.distance/1000,
+      time: body.period*3600*24,
+    };
+  }
 
   return (
     <CorrectorTable
@@ -296,7 +319,8 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
       conversionFactors={effectiveConversionFactors}
       correctordata={undefined}
       setPlotData={setPlotData}
-      setPlotDataIc={setPlotDataIc} />
+      setPlotDataIc={setPlotDataIc} 
+      status= {status_correction}/>
   );
 };
 

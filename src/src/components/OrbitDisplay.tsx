@@ -28,7 +28,9 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
     customdata: [[]],
     name: ""
   }]);
-  const [layout, setLayout] = useState<any>(null);
+  const [layout, setLayout] = useState<any>({
+    b: 0, l: 0, r: 0, t: 0, pad: 0,
+  });
   const body = useContext<any>(BodyContext);
   const R2 = body?.radius;
   const R1 = body?.primary_radius;
@@ -39,6 +41,7 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
       return;
     }
     const fetchPlotData = async () => {
+      var dataToPlot: Partial<Plotly.Data>[] = [];
       try {
         let lagrangeLen = 2;
         let maxCoords = [0, 0, 0];
@@ -139,7 +142,7 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
         };
 
         // Combine all traces in the order: orbits, spheres, then Lagrange points
-        const dataToPlot = [
+        dataToPlot = [
           ...orbitTraces,
           R2SphereTrace,
           ...(R1SphereTrace ? [R1SphereTrace] : []),
@@ -165,9 +168,11 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
           margin: { t: 0, b: 0, l: 0, r: 0, pad: 0 },
         });
 
-        setOrbitPlotData(dataToPlot);
       } catch (error) {
         console.error("Error in plot generation:", error);
+      }
+      finally {
+        setOrbitPlotData(dataToPlot);
       }
     };
 
@@ -189,29 +194,40 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
     }
     let currentData = {
       iteration: 0,
-      x: icData.x,
+      x: icData.centered? icData.x - (1 - body.mu): icData.x ,
       vy: icData.vy,
       vz: icData.vz,
       period: icData.period,
       deltaX: 0,
       deltaVy: 0,
       deltaVz: 0,
+      centered: icData.centered,
     };
 
     setCorrectorData(currentData); // Set initial data in the table
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-      <Typography variant="h6" component="h2">
-        Orbit display
-      </Typography>
+    <Box sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      width: '100%',
+      border: 1,
+      borderColor: '#ccc',
+      borderRadius: 5,
+      height: 650,
+      mr: 0,
+      padding: 0
+
+    }}>
+      <p style={{ fontSize: 24, fontWeight: "normal" }}>Orbit Display</p>
 
       <Box sx={{
         height: '500px',
         backgroundColor: '#f5f5f5',
         borderRadius: '4px',
-        width: '90%',
+        width: '95%',
       }}>
         <Plot
           data={orbitsPlotData}
@@ -226,7 +242,7 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
         />
       </Box>
 
-      <Box sx={{ display: 'flex', justifyContent: "center", alignItems: 'center', width: '100%', padding: 0, gap: 10 }}>
+      <Box sx={{ display: 'flex', justifyContent: "center", alignItems: 'center', width: '100%', padding: 2, gap: 2}}>
         <Button
           variant="contained"
           onClick={handleCloseOrbit}

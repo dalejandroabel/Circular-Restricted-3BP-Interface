@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useContext } from 'react';
+
 import {
   useReactTable,
   getCoreRowModel,
@@ -22,8 +23,13 @@ import {
   styled,
   Button,
   CircularProgress,
+  Popover,
+  TextField,
+  MenuItem,
+  IconButton,
 } from '@mui/material';
 import axios from 'axios';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { API_URL } from '../../config';
 import BodyContext from './contexts';
 import { FunctionParams, AdvancedTableProps, OrbitData, RowSelectionState } from './types';
@@ -53,7 +59,6 @@ const formatInt = (value: number): string => {
 // Main Table Component
 const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
   data,
-  isCanonical,
   onSelectionChange,
   handlePlotData,
   handleIcData,
@@ -69,6 +74,11 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
   });
   const [isLoadingOrbits, setIsLoadingOrbits] = useState(false);
   const body = useContext<any>(BodyContext);
+  const [method, setMethod] = useState('DOP853');
+  const [atol, setAtol] = useState(1e-12);
+  const [rtol, setRtol] = useState(1e-12);
+  const [Norbits, setNorbits] = useState(1000);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
 
   // Memoized Selected Rows Calculation
@@ -111,31 +121,31 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
         ),
       }),
       columnHelper.accessor('x0', {
-        header: `x ${isCanonical ? '[L.U]' : '[km]'}`,
+        header: `x [L.U]`,
         cell: (info) => formatValue(info.getValue()),
       }),
       columnHelper.accessor('y0', {
-        header: `y ${isCanonical ? '[L.U]' : '[km]'}`,
+        header: `y [L.U]`,
         cell: (info) => formatValue(info.getValue()),
       }),
       columnHelper.accessor('z0', {
-        header: `z ${isCanonical ? '[L.U]' : '[km]'}`,
+        header: `z [L.U]`,
         cell: (info) => formatValue(info.getValue()),
       }),
       columnHelper.accessor('vx0', {
-        header: `vx ${isCanonical ? '[L.U/T.U]' : '[km/s]'}`,
+        header: `vx [L.U/T.U]`,
         cell: (info) => formatValue(info.getValue()),
       }),
       columnHelper.accessor('vy0', {
-        header: `vy ${isCanonical ? '[L.U/T.U]' : '[km/s]'}`,
+        header: `vy [L.U/T.U]`,
         cell: (info) => formatValue(info.getValue()),
       }),
       columnHelper.accessor('vz0', {
-        header: `vz ${isCanonical ? '[L.U/T.U]' : '[km/s]'}`,
+        header: `vz [L.U/T.U]`,
         cell: (info) => formatValue(info.getValue()),
       }),
       columnHelper.accessor('period', {
-        header: `Period ${isCanonical ? '[T.U]' : '[s]'}`,
+        header: `Period [T.U]`,
         cell: (info) => formatValue(info.getValue()),
       }),
       columnHelper.accessor('stability_index', {
@@ -151,7 +161,7 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
         cell: (info) => formatInt(info.getValue()),
       })
     ],
-    [isCanonical]
+    []
   );
 
   // Table Instance
@@ -196,6 +206,7 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
         vy: params.vy,
         vz: params.vz,
         period: params.period,
+        centered: params.centered,
       };
       return orbitParams;
     });
@@ -242,11 +253,11 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
         vz: vz,
         period: period,
         mu: mu,
-        method: 'RK45',
+        method: method,
         centered: centered,
-        N: 1000,
-        atol: 1e-12,
-        rtol: 1e-12
+        N: Norbits,
+        atol: atol,
+        rtol: rtol,
       });
 
       if (!response.data) {
@@ -353,6 +364,60 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
     <Box sx={{ width: '100%' }}>
       <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2, padding: 1, width: '90%' }}>
+          <Popover
+            open={Boolean(anchorEl)}
+            anchorEl={anchorEl}
+            onClose={() => setAnchorEl(null)}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'center',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'center',
+            }}
+          >
+            <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <TextField
+                label="Method"
+                value={method} // Replace `Norbits` with the appropriate state variable if needed
+                onChange={(e) => setMethod(e.target.value)} // Ensure the value is parsed as a number
+                select
+                fullWidth
+              >
+                <MenuItem value="RK45">Runge-Kutta method of order 5(4) </MenuItem>
+                <MenuItem value="DOP853">Runge-Kutta method of order 8 </MenuItem>
+                <MenuItem value="LSODA">Adams/BDF method </MenuItem>
+              </TextField>
+
+              <TextField
+                label="Number of points"
+                type="number"
+                value={Norbits} // Replace `batch` with the appropriate state variable if needed
+                onChange={(e) => setNorbits(Number(e.target.value))} // Ensure the value is parsed as a number
+                fullWidth
+              />
+              <TextField
+                label="Absolute Tolerance"
+                type="number"
+                value={atol} // Replace `batch` with the appropriate state variable if needed
+                onChange={(e) => setAtol(Number(e.target.value))} // Ensure the value is parsed as a number
+                fullWidth />
+              <TextField
+                label="Relative Tolerance"
+                type="number"
+                value={rtol} // Replace `batch` with the appropriate state variable if needed
+                onChange={(e) => setRtol(Number(e.target.value))} // Ensure the value is parsed as a number
+                fullWidth />
+
+            </Box>
+          </Popover>
+          <IconButton
+          onClick={(event) => setAnchorEl(event.currentTarget)}
+          sx={{ marginLeft: 2 }}
+        >
+          <SettingsIcon />
+        </IconButton>
           <Button variant="contained" color="primary" sx={{ margin: 2 }} onClick={plotOrbits} disabled={isLoadingOrbits}>
             Plot orbits
           </Button>

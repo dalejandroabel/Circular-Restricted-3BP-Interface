@@ -140,7 +140,7 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
   }
 
   return (
-    <Box sx={{ width: '100%', height: 300 }}>
+    <Box sx={{ width: '100%', height: 300, mt: 4 }}>
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs value={tabValue} onChange={handleTabChange} aria-label="orbit parameters tabs" centered>
           <Tab label="Body Parameters" />
@@ -150,9 +150,9 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
 
       {/* First Tab - Body Parameters */}
       <TabPanel value={tabValue} index={0}>
-        <Container maxWidth="md" sx={{ padding: 2, height: 250, width: "100%", display: 'flex', justifyContent: 'center'}}>
-          <Stack spacing={2} sx={{ width: '100%' }}>
-            <Stack spacing={2} margin={4} sx={{ width: '100%', height: '100%', justifyContent: 'center'}}>
+        <Container maxWidth="md" sx={{ padding: 0, height: 250, width: "100%", display: 'flex', justifyContent: 'center'}}>
+          <Stack spacing={0} sx={{ width: '100%' }}>
+            <Stack spacing={0} margin={0} sx={{ width: '100%', height: '100%', justifyContent: 'center'}}>
               <ParameterDisplay
                 label="Mass Ratio"
                 value={bodyDetails?.mu}
@@ -173,13 +173,13 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
 
       {/* Second Tab - Editable Orbit Limits */}
       <TabPanel value={tabValue} index={1}>
-        <Container maxWidth="md" sx={{ padding: 2, height: 250, width: "100%", display: 'flex', justifyContent: 'center'}}>
+        <Container maxWidth="md" sx={{ padding: 0, height: 250, width: "100%", display: 'flex', justifyContent: 'center'}}>
           <Stack spacing={2} sx={{ width: '100%' }}>
             <Grid container spacing={2}>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Minimum Period"
+                  label="Min Period"
                   type="number"
                   value={editableParameters.minPeriod ?? ''}
                   onChange={(e) => handleParameterChange('minPeriod', e.target.value)}
@@ -191,7 +191,7 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Maximum Period"
+                  label="Max Period"
                   type="number"
                   value={editableParameters.maxPeriod ?? ''}
                   onChange={(e) => handleParameterChange('maxPeriod', e.target.value)}
@@ -203,7 +203,7 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Minimum Stability Index"
+                  label="Min Stability Index"
                   type="number"
                   value={editableParameters.minStabilityIndex ?? ''}
                   onChange={(e) => handleParameterChange('minStabilityIndex', e.target.value)}
@@ -215,7 +215,7 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Maximum Stability Index"
+                  label="Max Stability Index"
                   type="number"
                   value={editableParameters.maxStabilityIndex ?? ''}
                   onChange={(e) => handleParameterChange('maxStabilityIndex', e.target.value)}
@@ -227,7 +227,7 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Minimum Jacobi Constant"
+                  label="Min Jacobi Constant"
                   type="number"
                   value={editableParameters.minJacobiConstant ?? ''}
                   onChange={(e) => handleParameterChange('minJacobiConstant', e.target.value)}
@@ -239,7 +239,7 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Maximum Jacobi Constant"
+                  label="Max Jacobi Constant"
                   type="number"
                   value={editableParameters.maxJacobiConstant ?? ''}
                   onChange={(e) => handleParameterChange('maxJacobiConstant', e.target.value)}
@@ -267,7 +267,7 @@ const ParameterDisplay: React.FC<{
     : 'N/A';
 
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+    <Box sx={{ display: 'flex', justifyContent: 'space-between'}}>
       <Typography variant="body1">{label}:</Typography>
       <Typography variant="body1" color="text.secondary">
         {formattedValue} {unit}
@@ -293,7 +293,7 @@ function TabPanel(props: {
       {...other}
     >
       {value === index && (
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ p: 0 }}>
           {children}
         </Box>
       )}

@@ -4,11 +4,15 @@ import {
   MenuItem,
   SelectChangeEvent,
   Button,
-  TextField
+  TextField,
+  Popover,
+  IconButton
 } from '@mui/material';
+import SettingsIcon from '@mui/icons-material/Settings';
 import axios from 'axios';
 import { API_URL } from "../../config";
 import { SystemOption, ApiResponse, SystemFormProps} from './types';
+
 
 const SystemForm: React.FC<SystemFormProps> = ({
   onDataLoaded,
@@ -36,6 +40,9 @@ const SystemForm: React.FC<SystemFormProps> = ({
 
   const [pOptions, setPOptions] = useState<SystemOption[]>([]);
   const [qOptions, setQOptions] = useState<SystemOption[]>([]);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const [Norbits, setNorbits] = useState<number>();
+  const [database, setDatabase] = useState<string>('0');
 
   // Fetch primary bodies on component mount
   useEffect(() => {
@@ -255,7 +262,11 @@ const SystemForm: React.FC<SystemFormProps> = ({
       const formattedQ = q === "" ? "0" : q;
       const formattedLibration = libration === "" ? "-1" : libration.replace("L", "");
       const formattedBatch = batch === "" ? "0" : batch;
-      const response = await axios.get<ApiResponse>(`${API_URL}/orbits/?S=${secondaryBody}&F=${family}&P=${formattedP}&Q=${formattedQ}&L=${formattedLibration}&B=${formattedBatch}`);
+      const formattedLimit = Norbits === undefined ? "0" : String(Norbits);
+      const formatteddatabase = database;
+      const response = await axios.get<ApiResponse>(`${API_URL}/orbits/?S=${secondaryBody}&F=${family}&P=${formattedP}&Q=${formattedQ}&L=${formattedLibration}&B=${formattedBatch}&LIMIT=${formattedLimit}&D=${formatteddatabase}`);
+
+
       const data = response.data;
       onDataLoaded(data);
 
@@ -273,6 +284,7 @@ const SystemForm: React.FC<SystemFormProps> = ({
         family: ic_data.initialconditions?.map((ic) => Number(ic.id_family)),
         stability_index: ic_data.initialconditions?.map((ic) => Number(ic.stability_index)),
         jacobi_constant: ic_data.initialconditions?.map((ic) => Number(ic.jacobi_constant)),
+        source: ic_data.initialconditions?.map((ic) => Number(ic.source)),
       }
       onIcDataLoaded(ic_data_modified);
       handlePlotData([]);
@@ -296,13 +308,17 @@ const SystemForm: React.FC<SystemFormProps> = ({
       display: 'flex',
       flexDirection: 'column',
       gap: 2,
-      padding : 2,
-      height: 600,
+      height: 650,
       alignItems: 'center',
-    }}>
-      <p style={{ fontSize: 24, fontWeight: "normal" }}>System</p>
+      justifyContent: 'space-between',
+      border: 1,
+      borderColor: '#ccc',
+      borderRadius: 5,
 
+     }}>
+      <Box sx = {{width: "100%",display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}}>
       {/* Primary Body Dropdown */}
+      <p style={{ fontSize: 24, fontWeight: "normal" }}>System</p>
       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexDirection: 'column', width: "100%",
         alignItems: "center"
        }}>  
@@ -426,18 +442,57 @@ const SystemForm: React.FC<SystemFormProps> = ({
         </TextField>
       )}
       </Box>
+      </Box>
+      <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 10}}>
+        <Popover
+          open={Boolean(anchorEl)}
+          anchorEl={anchorEl}
+          onClose={() => setAnchorEl(null)}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'center',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'center',
+          }}
+        >
+          <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              label="Database"
+              value={database} 
+              onChange={(e) => setDatabase(e.target.value)} 
+              select
+              fullWidth
+            >
+              <MenuItem value="0">any</MenuItem>
+              <MenuItem value="1">Planar Axis-symetric</MenuItem>
+              <MenuItem value="2">JPL CRTBP</MenuItem>
 
-      {/* Load Orbits Button */}
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+            </TextField>
+            <TextField
+              label="Number of Orbits"
+              type="number"
+              value={Norbits} // Replace `batch` with the appropriate state variable if needed
+              onChange={(e) => setNorbits(Number(e.target.value))} // Ensure the value is parsed as a number
+              fullWidth
+            />
+          </Box>
+        </Popover>
+        <IconButton
+          onClick={(event) => setAnchorEl(event.currentTarget)}
+          sx={{ marginRight: 2 }}
+        >
+          <SettingsIcon />
+        </IconButton>
+        
         <Button
           variant="contained"
           onClick={handleLoadOrbits}
           disabled={!isButtonEnabled() || loading}
           sx={{
-            backgroundColor: '#3498db',
-            '&:hover': {
-              backgroundColor: '#2980b9'
-            }
+            height: 50,
+            justifySelf: 'self-end'
           }}
         >
           Load orbits
