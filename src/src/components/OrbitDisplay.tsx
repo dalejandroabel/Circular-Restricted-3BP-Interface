@@ -87,14 +87,14 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
           });
 
         // Fetch R2 sphere data from API and create its trace
-        const { data: R2_sphere_ } = await axios.post(`${API_URL}/orbits/sphere/`, { R: R2 });
+        const { data: R2_sphere_ } = await axios.post(`${API_URL}/orbits/sphere/`, { R: R2, N:2, mu: body.mu });
         const R2_sphere = JSON.parse(R2_sphere_.data);
         const R2SphereTrace = {
           x: R2_sphere.x,
           y: R2_sphere.y,
           z: R2_sphere.z,
           type: "surface",
-          colorscale: "mint",
+          colorscale: [[0, "blue"], [1, "blue"]],
           hoverinfo: "skip",
           showscale: false,
           contours: { x: { highlight: false }, y: { highlight: false }, z: { highlight: false } },
@@ -114,7 +114,7 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
           if (maxCoords[0] < Math.abs(L3)) {
             maxCoords[0] = Math.abs(L3);
           }
-          const { data: R1_sphere_ } = await axios.post(`${API_URL}/orbits/sphere/`, { R: R1 });
+          const { data: R1_sphere_ } = await axios.post(`${API_URL}/orbits/sphere/`, { R: R1, N: 1,mu: body.mu });
           const R1_sphere = JSON.parse(R1_sphere_.data);
           R1SphereTrace = {
             x: R1_sphere.x,

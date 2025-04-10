@@ -264,7 +264,12 @@ if __name__ == "__main__":
 
     if sys.argv[1] == "Sphere":
         R2 = float(sys.argv[2])
-        x_data, y_data, z_data = ms(0, 0, 0, R2)
+        N = float(sys.argv[3])
+        mu = float(sys.argv[4])
+        if N == 1:
+            x_data, y_data, z_data = ms(-(1-mu), 0, 0, R2)
+        else:
+            x_data, y_data, z_data = ms(0, 0, 0, R2)
         data = json.dumps({"x": x_data.tolist(), "y": y_data.tolist(), "z": z_data.tolist()})
         print(data)
     

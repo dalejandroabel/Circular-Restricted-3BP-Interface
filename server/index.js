@@ -263,8 +263,10 @@ app.get("/api/orbits/lagrange/:body", (req, res) => {
 
 app.post("/api/orbits/sphere/", (req, res) => {
   const R = req.body.R;
+  const N = req.body.N;
+  const mu = req.body.mu;
   const pythonProcess = spawn("../.crtbpenv/bin/python3", ["python_scripts/physics.py", "Sphere",
-    R]);
+    R,N,mu]);
   let dataToSend = "";
   pythonProcess.stdout.on("data", (data) => {
     dataToSend += data.toString();

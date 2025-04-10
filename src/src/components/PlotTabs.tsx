@@ -311,7 +311,7 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
 
   const handleDatabaseChange = (event: SelectChangeEvent) => {
     setSelectedDatabase(event.target.value);
-    console
+
   };
 
   const handleXAxisChange = (event: SelectChangeEvent) => {
@@ -332,7 +332,6 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
     const clickedX = clickedPoint.x;
     const clickedVY = clickedPoint.y;
     const clickedVz = clickedPoint.z || 0;
-    console.log("customdata", clickedPoint.customdata);
     const clickedPeriod = typeof(clickedPoint.customdata) == "object" ? clickedPoint.customdata[1] : clickedPoint.customdata;
     const orbitParams = {
       x: clickedX,
@@ -340,7 +339,6 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
       vz: clickedVz,
       period: clickedPeriod,
     };
-    console.log(orbitParams);
 
     try {
       const mu = body.mu;

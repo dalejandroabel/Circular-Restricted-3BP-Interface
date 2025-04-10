@@ -7,6 +7,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Typography,
   styled,
 } from '@mui/material';
 import axios from 'axios';
@@ -101,6 +102,8 @@ const CorrectorTable: React.FC<CorrectorTableProps> = ({
 
   return (
     <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Typography sx = {{fontSize: 24, fontWeight: "normal", backgroundColor:  "#1976d2",
+         width: "80%", color: "white", textAlign: "center", borderBottomColor: "white", borderBottomWidth: 1}}>Correction Process</Typography>
       <StyledTableContainer>
         <Table stickyHeader size="small">
           <TableHead>
