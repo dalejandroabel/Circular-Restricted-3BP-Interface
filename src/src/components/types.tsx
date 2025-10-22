@@ -52,7 +52,6 @@ interface AdvancedTableProps {
     onSelectionChange?: (selectedRows: OrbitData[]) => void;
     handlePlotData?: (plotData: any) => void;
     handleIcData?: (icData: any) => void;
-    isLoading?: boolean;
 }
 
 interface RowSelectionState {
@@ -93,6 +92,7 @@ interface BodyDetails {
     distance: number;
     period: number;
     body: any;
+    mass: number;
 }
 
 interface OrbitParametersProps {
@@ -105,7 +105,6 @@ interface OrbitParametersProps {
         minJacobiConstant?: number;
         maxJacobiConstant?: number;
     }) => void;
-    isLoading: boolean;
 }
 
 interface TabPanelProps {

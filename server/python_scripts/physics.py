@@ -41,7 +41,6 @@ def Propagate():
     N = int(sys.argv[13])
     centered = False if sys.argv[14] == "false" else True
     Y0 = np.array([x, y, z, vx, vy, vz])
-    # Se pasa al sistema COM
     if not centered:
         Y0[0] += (1-mu)
     t = np.linspace(0, period, int(N))
@@ -78,10 +77,10 @@ class dc():
 
     def _EoM(self, t, Y, mu):
         x, y, z, vx, vy, vz = Y
-        r1 = np.sqrt(x**2+2*x*mu+mu**2+y**2+z**2)
+        r1 = np.sqrt((x+mu)**2+y**2+z**2)
         mmur1 = (1-mu)/(r1**3)
 
-        r2 = np.sqrt(x**2+y**2+z**2-2*x*(1-mu)+(1-mu)**2)
+        r2 = np.sqrt((x-(1-mu))**2+y**2+z**2)
         mur2 = mu/r2**3
 
         ax = 2*vy+x-mmur1*(x+mu)-mur2*(x-(1-mu))

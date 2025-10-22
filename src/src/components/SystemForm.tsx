@@ -6,7 +6,8 @@ import {
   Button,
   TextField,
   Popover,
-  IconButton
+  IconButton,
+  CircularProgress
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 import axios from 'axios';
@@ -43,6 +44,8 @@ const SystemForm: React.FC<SystemFormProps> = ({
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [Norbits, setNorbits] = useState<number>();
   const [database, setDatabase] = useState<string>('0');
+  const [currentSecondary, setCurrentSecondary] = useState<string>('');
+
 
   // Fetch primary bodies on component mount
   useEffect(() => {
@@ -246,6 +249,9 @@ const SystemForm: React.FC<SystemFormProps> = ({
 
   const handleLoadOrbits = async () => {
 
+    const body = await axios.get(`${API_URL}/bodies/${secondaryBody}`);
+    handleBody(body.data.body[0]);
+
     try {
       handleLoading(true);
 
@@ -270,27 +276,30 @@ const SystemForm: React.FC<SystemFormProps> = ({
       const data = response.data;
       onDataLoaded(data);
 
-      const response_ic = await axios.get<ApiResponse>(`${API_URL}/initialconditions/${secondaryBody}`);
 
-      const ic_data = response_ic.data;
-      let ic_data_modified = {
-        x: ic_data.initialconditions?.map((ic) => Number(ic.x0)),
-        y: ic_data.initialconditions?.map((ic) => Number(ic.y0)),
-        z: ic_data.initialconditions?.map((ic) => Number(ic.z0)),
-        vx: ic_data.initialconditions?.map((ic) => Number(ic.vx0)),
-        vy: ic_data.initialconditions?.map((ic) => Number(ic.vy0)),
-        vz: ic_data.initialconditions?.map((ic) => Number(ic.vz0)),
-        period: ic_data.initialconditions?.map((ic) => Number(ic.period)),
-        family: ic_data.initialconditions?.map((ic) => Number(ic.id_family)),
-        stability_index: ic_data.initialconditions?.map((ic) => Number(ic.stability_index)),
-        jacobi_constant: ic_data.initialconditions?.map((ic) => Number(ic.jacobi_constant)),
-        source: ic_data.initialconditions?.map((ic) => Number(ic.source)),
+      if (secondaryBody !== currentSecondary) {
+        const response_ic = await axios.get<ApiResponse>(`${API_URL}/initialconditions/${secondaryBody}`);
+
+        const ic_data = response_ic.data;
+        let ic_data_modified = {
+          x: ic_data.initialconditions?.map((ic) => Number(ic.x0)),
+          y: ic_data.initialconditions?.map((ic) => Number(ic.y0)),
+          z: ic_data.initialconditions?.map((ic) => Number(ic.z0)),
+          vx: ic_data.initialconditions?.map((ic) => Number(ic.vx0)),
+          vy: ic_data.initialconditions?.map((ic) => Number(ic.vy0)),
+          vz: ic_data.initialconditions?.map((ic) => Number(ic.vz0)),
+          period: ic_data.initialconditions?.map((ic) => Number(ic.period)),
+          family: ic_data.initialconditions?.map((ic) => Number(ic.id_family)),
+          stability_index: ic_data.initialconditions?.map((ic) => Number(ic.stability_index)),
+          jacobi_constant: ic_data.initialconditions?.map((ic) => Number(ic.jacobi_constant)),
+          source: ic_data.initialconditions?.map((ic) => Number(ic.source)),
+        }
+        onIcDataLoaded(ic_data_modified);
+        handlePlotData([]);
       }
-      onIcDataLoaded(ic_data_modified);
-      handlePlotData([]);
 
-      const body = await axios.get(`${API_URL}/bodies/${secondaryBody}`);
-      handleBody(body.data.body[0]);
+      setCurrentSecondary(secondaryBody);
+
     }
     catch (error) {
       console.error('Error fetching orbits:', error);
@@ -324,6 +333,7 @@ const SystemForm: React.FC<SystemFormProps> = ({
           alignItems: "center"
         }}>
           <TextField
+            id = "primary-select"
             label="Primary Body"
             value={primaryBody}
             onChange={(e) => handlePrimaryChange({ target: { value: e.target.value } } as SelectChangeEvent<string>)}
@@ -340,6 +350,7 @@ const SystemForm: React.FC<SystemFormProps> = ({
 
           {/* Secondary Body Dropdown */}
           <TextField
+            id = "secondary-select"
             label="Secondary Body"
             value={secondaryBody}
             onChange={(e) => handleSecondaryChange({ target: { value: e.target.value } } as SelectChangeEvent<string>)}
@@ -357,6 +368,7 @@ const SystemForm: React.FC<SystemFormProps> = ({
 
           {/* Family Dropdown */}
           <TextField
+            id = "family-select"
             label="Family"
             value={family}
             onChange={(e) => handleFamilyChange({ target: { value: e.target.value } } as SelectChangeEvent<string>)}
@@ -376,6 +388,7 @@ const SystemForm: React.FC<SystemFormProps> = ({
           {family == "9" && (
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', width: "80%" }}>
               <TextField
+                id = "p-select"
                 label="p"
                 value={p}
                 onChange={(e) => {
@@ -394,6 +407,7 @@ const SystemForm: React.FC<SystemFormProps> = ({
               </TextField>
 
               <TextField
+                id = "q-select"
                 label="q"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
@@ -413,6 +427,7 @@ const SystemForm: React.FC<SystemFormProps> = ({
           {/* Libration Dropdown */}
           {librationActive && (
             <TextField
+              id = "libration-select"
               label="Libration"
               value={libration}
               onChange={(e) => setLibration(e.target.value)}
@@ -431,6 +446,7 @@ const SystemForm: React.FC<SystemFormProps> = ({
           {/* Batch Dropdown */}
           {batchActive && (
             <TextField
+              id="batch-select"
               label="Batch"
               value={batch}
               onChange={(e) => setBatch(e.target.value)}
@@ -460,6 +476,7 @@ const SystemForm: React.FC<SystemFormProps> = ({
         >
           <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <TextField
+
               label="Database"
               value={database}
               onChange={(e) => setDatabase(e.target.value)}
@@ -487,7 +504,7 @@ const SystemForm: React.FC<SystemFormProps> = ({
           sx={{
             borderRadius: 2,
             p: 1,
-            '& .MuiSvgIcon-root': { fontSize: 20 }, // tamaño razonable
+            '& .MuiSvgIcon-root': { fontSize: 0 }, // tamaño razonable
             boxShadow: 0,
             mr: 2,
           }}
@@ -501,10 +518,26 @@ const SystemForm: React.FC<SystemFormProps> = ({
           disabled={!isButtonEnabled() || loading}
           sx={{
             height: 50,
-            justifySelf: 'self-end'
+            justifySelf: 'self-end',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
-          Load orbits
+          {loading ? (
+            <Box
+              component="span"
+              sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+              }}
+            >
+              <CircularProgress size={24} color="inherit" />
+            </Box>
+          ) : (
+            'Load orbits'
+          )}
         </Button>
       </Box>
     </Box>

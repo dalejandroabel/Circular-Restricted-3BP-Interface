@@ -7,7 +7,6 @@ import {
   Typography,
   Stack,
   Container,
-  CircularProgress,
   Alert,
   TextField,
   Grid,
@@ -18,7 +17,6 @@ import {OrbitParametersProps, BodyDetails } from './types';
 const ParametersTab: React.FC<OrbitParametersProps> = ({
   data,
   onParameterChange,
-  isLoading
 }) => {
   // State for body details and editable parameters
   const [bodyDetails, setBodyDetails] = useState<BodyDetails | null>(null);
@@ -121,15 +119,6 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
     });
   };
 
-  // Render loading state
-  if (isLoading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" height="200px">
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   // Render error state
   if (error) {
     return (
@@ -138,9 +127,18 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
       </Alert>
     );
   }
+  
+  const includeTimeUnit = (bodydetails: BodyDetails) => {
+    const body_mass = bodydetails.mass;
+    const body_distance = bodydetails.distance;
+    const unit_mass = body_mass / bodydetails.mu;
+    const G = 6.67430e-11;
+    const unit_period = Math.sqrt(body_distance ** 3 / (G * unit_mass));
+    return unit_period / 86400; 
+  }
 
   return (
-    <Box sx={{ width: '100%', height: 300, mt: 4 }}>
+    <Box sx={{ width: '100%', height: 300, mt: 4, border: 1, borderColor: '#ccc', borderRadius: 5, p: 2 }}>
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs value={tabValue} onChange={handleTabChange} aria-label="orbit parameters tabs" centered>
           <Tab label="Body Parameters" />
@@ -158,13 +156,17 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
                 value={bodyDetails?.mu}
               />
               <ParameterDisplay
-                label="Longitude Unit"
+                label="Longitude Unit (km)"
                 value={bodyDetails?.distance}
               />
               <ParameterDisplay
-                label="Period"
+                label="Period (days)"
                 value={bodyDetails?.period}
-                unit="days"
+
+              />
+              <ParameterDisplay
+                label="Time Unit (days)"
+                value={bodyDetails ? includeTimeUnit(bodyDetails) : null}
               />
             </Stack>
           </Stack>
@@ -263,11 +265,13 @@ const ParameterDisplay: React.FC<{
   unit?: string;
 }> = ({ label, value, unit = '' }) => {
   const formattedValue = value !== null && value !== undefined
-    ? value.toFixed(6)
+    ? Math.abs(value) < 1e-3
+      ? value.toExponential(4)
+      : value.toFixed(4)
     : 'N/A';
 
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'space-between'}}>
+    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
       <Typography variant="body1">{label}:</Typography>
       <Typography variant="body1" color="text.secondary">
         {formattedValue} {unit}
@@ -275,7 +279,6 @@ const ParameterDisplay: React.FC<{
     </Box>
   );
 };
-
 // Tab Panel Component
 function TabPanel(props: {
   children?: React.ReactNode;

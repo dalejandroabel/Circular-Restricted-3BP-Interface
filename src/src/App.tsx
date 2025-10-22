@@ -76,7 +76,7 @@ const CircularRestrictedThreeBody: React.FC = () => {
               loading={isLoadingOrbits}
             />
             <ParametersTab
-              data={data} isLoading={isLoadingOrbits} />
+              data={data}/>
           </Grid2>
 
           {/* Plots section - Contains both plots */}
@@ -112,7 +112,6 @@ const CircularRestrictedThreeBody: React.FC = () => {
               data={data}
               handlePlotData={setPlotData}
               handleIcData={setPlotDataIc}
-              isLoading={isLoadingOrbits}
             />
           </Box >
 

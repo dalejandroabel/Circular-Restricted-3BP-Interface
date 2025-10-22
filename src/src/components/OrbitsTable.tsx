@@ -22,7 +22,6 @@ import {
   Typography,
   styled,
   Button,
-  CircularProgress,
   Popover,
   TextField,
   MenuItem,
@@ -48,12 +47,10 @@ const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
   },
 }));
 
-// Utility Functions
-const formatValue = (value: number): string => {
-  return value.toFixed(8);
-};
-const formatInt = (value: number): string => {
-  return value.toFixed(0);
+
+const formatValue = (value: number, precission: number): string => {
+  if (value === 0.) return "0";
+  return value.toFixed(precission);
 }
 
 // Main Table Component
@@ -62,7 +59,6 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
   onSelectionChange,
   handlePlotData,
   handleIcData,
-  isLoading
 }) => {
   // Ensure data is always an array
   const safeData = useMemo(() => data?.orbits || [], [data]);
@@ -100,6 +96,7 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
 
   // Column Definition
   const columnHelper = createColumnHelper<OrbitData>();
+  const precission_coords = 8;
 
   const columns = useMemo(
     () => [
@@ -122,43 +119,43 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
       }),
       columnHelper.accessor('x0', {
         header: `x [L.U]`,
-        cell: (info) => formatValue(info.getValue()),
+        cell: (info) => formatValue(info.getValue(), precission_coords),
       }),
       columnHelper.accessor('y0', {
         header: `y [L.U]`,
-        cell: (info) => formatValue(info.getValue()),
+        cell: (info) => formatValue(info.getValue(), precission_coords),
       }),
       columnHelper.accessor('z0', {
         header: `z [L.U]`,
-        cell: (info) => formatValue(info.getValue()),
+        cell: (info) => formatValue(info.getValue(), precission_coords),
       }),
       columnHelper.accessor('vx0', {
         header: `vx [L.U/T.U]`,
-        cell: (info) => formatValue(info.getValue()),
+        cell: (info) => formatValue(info.getValue(), precission_coords),
       }),
       columnHelper.accessor('vy0', {
         header: `vy [L.U/T.U]`,
-        cell: (info) => formatValue(info.getValue()),
+        cell: (info) => formatValue(info.getValue(), precission_coords),
       }),
       columnHelper.accessor('vz0', {
         header: `vz [L.U/T.U]`,
-        cell: (info) => formatValue(info.getValue()),
+        cell: (info) => formatValue(info.getValue(), precission_coords),
       }),
       columnHelper.accessor('period', {
         header: `Period [T.U]`,
-        cell: (info) => formatValue(info.getValue()),
+        cell: (info) => formatValue(info.getValue(), 4),
       }),
       columnHelper.accessor('stability_index', {
         header: 'Stability Index',
-        cell: (info) => formatValue(info.getValue()),
+        cell: (info) => formatValue(info.getValue(),2),
       }),
       columnHelper.accessor('jc', {
         header: `Jacobi Constant`,
-        cell: (info) => formatValue(info.getValue()),
+        cell: (info) => formatValue(info.getValue(),5),
       }),
       columnHelper.accessor('source', {
         header: `database`,
-        cell: (info) => formatInt(info.getValue()),
+        cell: (info) => info.getValue().toFixed(0),
       })
     ],
     []
@@ -280,7 +277,7 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
     setIsLoadingOrbits(true);
     try {
       const selectedRows = getSelectedRows(rowSelection);
-      const mu = body.mu;
+      const mu = body?.mu;
 
       const paramsList: FunctionParams[] = selectedRows.map(row => ({
         x: row.x0,
@@ -293,7 +290,6 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
         mu: mu,
         centered: row.source == 2
       }));
-
       try {
         const results = await loadAllOrbits(paramsList);
         const plotData = results.map((result, index) => {
@@ -342,23 +338,10 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
     link.setAttribute('href', url);
     link.setAttribute('download', filename);
 
-    // Append to body, click, and remove
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
-  if (isLoading) {
-    return (
-      <Box sx={{ width: '100%', textAlign: 'center', py: 4 }}>
-        <Typography variant="h6" color="textSecondary">
-          Loading...
-        </Typography>
-        <Box display="flex" justifyContent="center" alignItems="center" height="200px">
-          <CircularProgress />
-        </Box>
-      </Box>
-    );
-  }
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -419,7 +402,7 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
             sx={{
               borderRadius: 2,
               p: 1,
-              '& .MuiSvgIcon-root': { fontSize: 20 }, // tamaño razonable
+              '& .MuiSvgIcon-root': { fontSize: 30 }, // tamaño razonable
               boxShadow: 0
             }}
           >
@@ -433,7 +416,9 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
           </Button>
         </Box>
       </Box>
-      <Box sx={{ width: '90%', display: 'flex', flexDirection: 'column', justifyContent: 'center', margin: '0 auto' }}>
+      <Box sx={{ width: '95 %', display: 'flex', flexDirection: 'column', justifyContent: 'center', margin: '0 auto',
+        border: 1, borderColor: '#ccc', borderRadius: 2
+      }}>
         <StyledTableContainer>
           <Table stickyHeader size="small">
             <TableHead>
@@ -516,7 +501,6 @@ const OrbitDataDisplay: React.FC<AdvancedTableProps> = ({
   onSelectionChange,
   handlePlotData,
   handleIcData,
-  isLoading
 }) => {
 
   // Default empty selection handler if not provided
@@ -532,7 +516,6 @@ const OrbitDataDisplay: React.FC<AdvancedTableProps> = ({
       onSelectionChange={handleSelectionChange}
       handlePlotData={handlePlotData}
       handleIcData={handleIcData}
-      isLoading={isLoading}
     />
   );
 };

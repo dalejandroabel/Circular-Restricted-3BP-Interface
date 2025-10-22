@@ -195,7 +195,7 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
       centered: icData.centered,
     };
 
-    setCorrectorData(currentData); // Set initial data in the table
+    setCorrectorData(currentData); 
   };
 
   return (

@@ -88,12 +88,12 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
       margin: { t: 40, b: 40, l: 40, r: 40 },
       showlegend: true,
       xaxis: {
-        title: 'X',
+        title: {text: 'X'},
         zeroline: false,
 
       },
       yaxis: {
-        title: 'VY',
+        title: {text:'VY'},
         zeroline: false,
       },
       updatemenus: [
@@ -147,9 +147,9 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
 
     const layout = {
       scene: {
-        xaxis: { title: 'X', showspikes: false, mirror: false, showline: true },
-        yaxis: { title: 'VY', showspikes: false, mirror: false, showline: true },
-        zaxis: { title: 'VZ', showspikes: false, mirror: false, showline: true },
+        xaxis: { title: {text:'X'}, showspikes: false, mirror: false, showline: false },
+        yaxis: { title: {text:'VY'}, showspikes: false, mirror: false, showline: false },
+        zaxis: { title: {text:'VZ'}, showspikes: false, mirror: false, showline: false },
         aspectmode: 'cube',
         aspectratio: { x: 1, y: 1, z: 1 },
         camera: {
