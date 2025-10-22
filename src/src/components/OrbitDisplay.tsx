@@ -2,9 +2,6 @@ import React, { useContext, useEffect, useState } from 'react';
 import {
   Box,
   Button,
-  Switch,
-  FormControlLabel,
-  Typography,
 } from '@mui/material';
 import Plot from 'react-plotly.js';
 import BodyContext from './contexts';
@@ -13,8 +10,6 @@ import axios from 'axios';
 import { OrbitDisplayProps } from './types';
 
 const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
-  isCanonical,
-  setIsCanonical,
   plotData,
   icData,
   setCorrectorData }) => {
@@ -181,10 +176,6 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
 
 
 
-  const handleUnitsChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setIsCanonical(event.target.checked);
-  };
-
   const handleCloseOrbit = async () => {
     if (!icData) {
       return;
@@ -259,37 +250,6 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
           Close orbit
         </Button>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography>Units:</Typography>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={isCanonical}
-                onChange={handleUnitsChange}
-                sx={{
-                  '& .MuiSwitch-switchBase.Mui-checked': {
-                    color: '#2196f3',
-                  },
-                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                    backgroundColor: '#2196f3',
-                  },
-                }}
-              />
-            }
-            label={
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Typography
-                  sx={{
-                    color: isCanonical ? '#2196f3' : 'text.secondary',
-                    transition: 'color 0.3s',
-                  }}
-                >
-                  {isCanonical ? 'Canonical' : 'International'}
-                </Typography>
-              </Box>
-            }
-          />
-        </Box>
       </Box>
     </Box>
   );

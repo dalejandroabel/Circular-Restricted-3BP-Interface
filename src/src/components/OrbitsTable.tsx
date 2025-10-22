@@ -413,11 +413,18 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
             </Box>
           </Popover>
           <IconButton
-          onClick={(event) => setAnchorEl(event.currentTarget)}
-          sx={{ marginLeft: 2 }}
-        >
-          <SettingsIcon />
-        </IconButton>
+            aria-label="Configuración"
+            size="large"
+            onClick={(e) => setAnchorEl(e.currentTarget)}
+            sx={{
+              borderRadius: 2,
+              p: 1,
+              '& .MuiSvgIcon-root': { fontSize: 20 }, // tamaño razonable
+              boxShadow: 0
+            }}
+          >
+            <SettingsIcon />
+          </IconButton>
           <Button variant="contained" color="primary" sx={{ margin: 2 }} onClick={plotOrbits} disabled={isLoadingOrbits}>
             Plot orbits
           </Button>
@@ -506,7 +513,6 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(({
 // Wrapper Component
 const OrbitDataDisplay: React.FC<AdvancedTableProps> = ({
   data,
-  isCanonical,
   onSelectionChange,
   handlePlotData,
   handleIcData,
@@ -523,7 +529,6 @@ const OrbitDataDisplay: React.FC<AdvancedTableProps> = ({
   return (
     <AdvancedTable
       data={data || null}
-      isCanonical={isCanonical}
       onSelectionChange={handleSelectionChange}
       handlePlotData={handlePlotData}
       handleIcData={handleIcData}

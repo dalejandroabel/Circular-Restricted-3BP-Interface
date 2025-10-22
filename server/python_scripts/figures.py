@@ -100,7 +100,7 @@ def plot_trajectory(rows, mu, R1=None, R2=None, db=None, **kwargs):
     if (lagrange_len != 3) and (max(maxcoords) > 0.2):
         limit = max(maxcoords) if centered else 0.15
     else:
-        limit = max(maxcoords)
+        limit = max(maxcoords) 
 
     ranges = [-limit * fact, limit * fact]
     fig.update_layout(

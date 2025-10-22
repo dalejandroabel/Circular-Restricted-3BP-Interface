@@ -50,20 +50,14 @@ const formatExponential = (value: number, precision: number = 3): string => {
 }
 const CorrectorTable: React.FC<CorrectorTableProps> = ({
   data,
-  isCanonical,
-  conversionFactors,
   status
 }) => {
   const getUnitLabel = (type: 'length' | 'velocity' | 'time') => {
-    if (isCanonical) {
+
       if (type === 'length') return '[L.U]';
       if (type === 'velocity') return '[L.U/T.U]';
       if (type === 'time') return '[T.U]';
-    } else {
-      if (type === 'length') return '[km]';
-      if (type === 'velocity') return '[km/s]';
-      if (type === 'time') return '[s]';
-    }
+
     return '';
   };
 
@@ -72,28 +66,24 @@ const CorrectorTable: React.FC<CorrectorTableProps> = ({
     value: number,
     type: 'length' | 'velocity' | 'time'
   ): number => {
-    if (isCanonical) return value;
-
-    if (type === 'length') {
-      return value * conversionFactors.length;
-    }
-    if (type === 'velocity') {
-      return value * conversionFactors.length / conversionFactors.time;
-    }
-    if (type === 'time') {
-      return value * conversionFactors.time;
-    }
-    return value * (conversionFactors.length / conversionFactors.time);
+    return value;
   };
   if (!data || data.length === 0) {
     return (
       <Box
         sx={{
+          display: 'flex',
           fontSize: '1.25rem',
           fontWeight: 'bold',
-          padding: '2rem',
+          padding: 0,
           textAlign: 'center',
-        }}
+          width: "100%",
+          height: 300,
+          alignItems: "center",
+          justifyContent: "center",
+          border: 1,
+          borderColor: '#ccc',
+          borderRadius: 5}}
       >
         No data available to correct, plot an orbit and click Close Orbit to correct
       </Box>
@@ -101,7 +91,7 @@ const CorrectorTable: React.FC<CorrectorTableProps> = ({
   }
 
   return (
-    <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
       <Typography sx = {{fontSize: 24, fontWeight: "normal", backgroundColor:  "#1976d2",
          width: "80%", color: "white", textAlign: "center", borderBottomColor: "white", borderBottomWidth: 1}}>Correction Process</Typography>
       <StyledTableContainer>
@@ -188,8 +178,6 @@ const CorrectorTable: React.FC<CorrectorTableProps> = ({
 
 // Example usage with parent component
 const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
-
-  isCanonical,
   correctordata,
   setPlotData,
   setPlotDataIc,
@@ -318,8 +306,6 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
   return (
     <CorrectorTable
       data={tabledata}
-      isCanonical={isCanonical}
-      conversionFactors={effectiveConversionFactors}
       correctordata={undefined}
       setPlotData={setPlotData}
       setPlotDataIc={setPlotDataIc} 

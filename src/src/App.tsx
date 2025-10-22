@@ -29,7 +29,6 @@ const PlotsSection = styled(Box)(({}) => ({
 }));
 
 const CircularRestrictedThreeBody: React.FC = () => {
-  const [isCanonical, setIsCanonical] = useState(true);
   const [data, setData] = useState(null);
   const [plotData, setPlotData] = useState(null);
   const [icData, setICData] = useState(null);
@@ -92,9 +91,6 @@ const CircularRestrictedThreeBody: React.FC = () => {
                 setPlotDataIc={setPlotDataIc} />
 
               <OrbitDisplay
-                isCanonical={isCanonical}
-                onUnitsChange={setIsCanonical}
-                setIsCanonical={setIsCanonical}
                 plotData={plotData}
                 icData={plotDataIc}
                 setCorrectorData={setCorrectorData}
@@ -104,9 +100,7 @@ const CircularRestrictedThreeBody: React.FC = () => {
             {/* First table section - Below plots */}
             <Grid2 size={12} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 4 }}>
               <CorrectorTable
-                isCanonical={isCanonical}
                 correctordata={correctordata}
-                conversionFactors={{ length: 1, time: 1 }}
                 setPlotData={setPlotData}
                 setPlotDataIc={setPlotDataIc}
                 data={data}
@@ -115,7 +109,6 @@ const CircularRestrictedThreeBody: React.FC = () => {
           </Grid2>
           <Box sx= {{ display: 'flex', flexDirection: 'column', justifyContent:'center', width: '100%' }}>
             <OrbitsTableDisplay
-              isCanonical={isCanonical}
               data={data}
               handlePlotData={setPlotData}
               handleIcData={setPlotDataIc}

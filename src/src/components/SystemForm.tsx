@@ -11,7 +11,7 @@ import {
 import SettingsIcon from '@mui/icons-material/Settings';
 import axios from 'axios';
 import { API_URL } from "../../config";
-import { SystemOption, ApiResponse, SystemFormProps} from './types';
+import { SystemOption, ApiResponse, SystemFormProps } from './types';
 
 
 const SystemForm: React.FC<SystemFormProps> = ({
@@ -315,135 +315,136 @@ const SystemForm: React.FC<SystemFormProps> = ({
       borderColor: '#ccc',
       borderRadius: 5,
 
-     }}>
-      <Box sx = {{width: "100%",display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}}>
-      {/* Primary Body Dropdown */}
-      <p style={{ fontSize: 24, fontWeight: "normal" }}>System</p>
-      <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexDirection: 'column', width: "100%",
-        alignItems: "center"
-       }}>  
-      <TextField
-        label="Primary Body"
-        value={primaryBody}
-        onChange={(e) => handlePrimaryChange({ target: { value: e.target.value } } as SelectChangeEvent<string>)}
-        select
-        fullWidth
-        sx={{ width: "80%" }}
-      >
-        {primaryOptions.map((option) => (
-          <MenuItem key={option.id} value={option.id}>
-        {option.name}
-          </MenuItem>
-        ))}
-      </TextField>
-
-      {/* Secondary Body Dropdown */}
-      <TextField
-        label="Secondary Body"
-        value={secondaryBody}
-        onChange={(e) => handleSecondaryChange({ target: { value: e.target.value } } as SelectChangeEvent<string>)}
-        select
-        fullWidth
-        disabled={!primaryBody}
-        sx={{ width: "80%" }}
-      >
-        {secondaryOptions.map((option) => (
-          <MenuItem key={option.id} value={option.id}>
-        {option.name}
-          </MenuItem>
-        ))}
-      </TextField>
-
-      {/* Family Dropdown */}
-      <TextField
-        label="Family"
-        value={family}
-        onChange={(e) => handleFamilyChange({ target: { value: e.target.value } } as SelectChangeEvent<string>)}
-        select
-        fullWidth
-        disabled={!secondaryBody}
-        sx={{ width: "80%" }}
-      >
-        {familyOptions.map((option) => (
-          <MenuItem key={option.id} value={option.id}>
-        {option.name}
-          </MenuItem>
-        ))}
-      </TextField>
-
-      {/* Resonance Dropdowns for Family 9 */}
-      {family == "9" && (
-        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', width: "80%" }}>
+    }}>
+      <Box sx={{ width: "100%", display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+        {/* Primary Body Dropdown */}
+        <p style={{ fontSize: 24, fontWeight: "normal" }}>System</p>
+        <Box sx={{
+          display: 'flex', justifyContent: 'center', gap: 2, flexDirection: 'column', width: "100%",
+          alignItems: "center"
+        }}>
           <TextField
-        label="p"
-        value={p}
-        onChange={(e) => {
-          setP(e.target.value);
-          // Reset q when p changes
-          setQ('');
-        }}
-        select
-        fullWidth
+            label="Primary Body"
+            value={primaryBody}
+            onChange={(e) => handlePrimaryChange({ target: { value: e.target.value } } as SelectChangeEvent<string>)}
+            select
+            fullWidth
+            sx={{ width: "80%" }}
           >
-        {pOptions.map((option) => (
-          <MenuItem key={option.id} value={option.id}>
-            {option.name}
-          </MenuItem>
-        ))}
+            {primaryOptions.map((option) => (
+              <MenuItem key={option.id} value={option.id}>
+                {option.name}
+              </MenuItem>
+            ))}
           </TextField>
 
+          {/* Secondary Body Dropdown */}
           <TextField
-        label="q"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        select
-        fullWidth
-        disabled={!p} // Disable q until p is selected
+            label="Secondary Body"
+            value={secondaryBody}
+            onChange={(e) => handleSecondaryChange({ target: { value: e.target.value } } as SelectChangeEvent<string>)}
+            select
+            fullWidth
+            disabled={!primaryBody}
+            sx={{ width: "80%" }}
           >
-        {qOptions.map((option) => (
-          <MenuItem key={option.id} value={option.id}>
-            {option.name}
-          </MenuItem>
-        ))}
+            {secondaryOptions.map((option) => (
+              <MenuItem key={option.id} value={option.id}>
+                {option.name}
+              </MenuItem>
+            ))}
           </TextField>
+
+          {/* Family Dropdown */}
+          <TextField
+            label="Family"
+            value={family}
+            onChange={(e) => handleFamilyChange({ target: { value: e.target.value } } as SelectChangeEvent<string>)}
+            select
+            fullWidth
+            disabled={!secondaryBody}
+            sx={{ width: "80%" }}
+          >
+            {familyOptions.map((option) => (
+              <MenuItem key={option.id} value={option.id}>
+                {option.name}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          {/* Resonance Dropdowns for Family 9 */}
+          {family == "9" && (
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', width: "80%" }}>
+              <TextField
+                label="p"
+                value={p}
+                onChange={(e) => {
+                  setP(e.target.value);
+                  // Reset q when p changes
+                  setQ('');
+                }}
+                select
+                fullWidth
+              >
+                {pOptions.map((option) => (
+                  <MenuItem key={option.id} value={option.id}>
+                    {option.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                label="q"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                select
+                fullWidth
+                disabled={!p} // Disable q until p is selected
+              >
+                {qOptions.map((option) => (
+                  <MenuItem key={option.id} value={option.id}>
+                    {option.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+          )}
+
+          {/* Libration Dropdown */}
+          {librationActive && (
+            <TextField
+              label="Libration"
+              value={libration}
+              onChange={(e) => setLibration(e.target.value)}
+              select
+              fullWidth
+              sx={{ width: "80%" }}
+            >
+              {librationOptions.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
+
+          {/* Batch Dropdown */}
+          {batchActive && (
+            <TextField
+              label="Batch"
+              value={batch}
+              onChange={(e) => setBatch(e.target.value)}
+              select
+              fullWidth
+              sx={{ width: "80%" }}
+            >
+              <MenuItem value="-1">South</MenuItem>
+              <MenuItem value="1">North</MenuItem>
+            </TextField>
+          )}
         </Box>
-      )}
-
-      {/* Libration Dropdown */}
-      {librationActive && (
-        <TextField
-          label="Libration"
-          value={libration}
-          onChange={(e) => setLibration(e.target.value)}
-          select
-          fullWidth
-          sx={{ width: "80%" }}
-        >
-          {librationOptions.map((option) => (
-        <MenuItem key={option} value={option}>
-          {option}
-        </MenuItem>
-          ))}
-        </TextField>
-      )}
-
-      {/* Batch Dropdown */}
-      {batchActive && (
-        <TextField
-          label="Batch"
-          value={batch}
-          onChange={(e) => setBatch(e.target.value)}
-          select
-          fullWidth
-          sx={{ width: "80%" }}
-        >
-          <MenuItem value="-1">South</MenuItem>
-          <MenuItem value="1">North</MenuItem>
-        </TextField>
-      )}
       </Box>
-      </Box>
-      <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 10}}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
         <Popover
           open={Boolean(anchorEl)}
           anchorEl={anchorEl}
@@ -460,8 +461,8 @@ const SystemForm: React.FC<SystemFormProps> = ({
           <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <TextField
               label="Database"
-              value={database} 
-              onChange={(e) => setDatabase(e.target.value)} 
+              value={database}
+              onChange={(e) => setDatabase(e.target.value)}
               select
               fullWidth
             >
@@ -480,12 +481,20 @@ const SystemForm: React.FC<SystemFormProps> = ({
           </Box>
         </Popover>
         <IconButton
-          onClick={(event) => setAnchorEl(event.currentTarget)}
-          sx={{ marginRight: 2 }}
+          aria-label="Configuración"
+          size="large"
+          onClick={(e) => setAnchorEl(e.currentTarget)}
+          sx={{
+            borderRadius: 2,
+            p: 1,
+            '& .MuiSvgIcon-root': { fontSize: 20 }, // tamaño razonable
+            boxShadow: 0,
+            mr: 2,
+          }}
         >
           <SettingsIcon />
         </IconButton>
-        
+
         <Button
           variant="contained"
           onClick={handleLoadOrbits}

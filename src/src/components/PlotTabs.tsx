@@ -15,6 +15,7 @@ import BodyContext from './contexts';
 import { TabPanelProps, PlotTabsProps } from './types';
 import { IconButton } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 
 
 // Sample data for the dropdowns
@@ -84,7 +85,7 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
     const layout = {
       height: 400,
       font: { size: 10 },
-      margin: { t: 10, b: 10, l: 10, r: 10 },
+      margin: { t: 40, b: 40, l: 40, r: 40 },
       showlegend: true,
       xaxis: {
         title: 'X',
@@ -462,6 +463,13 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
             }}
           />
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', paddingTop: 4 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <HelpOutlineIcon
+                  sx={{ marginRight: 1, color: '#888', cursor: 'pointer'}}
+                  titleAccess="Click on a point to plot the orbit"
+                  fontSize="large"
+                />
+                </Box>
             <FormControl sx={{ display: 'flex', alignItems: 'center', width: '50%' }}>
               <Select
                 value={selectedDatabase}
@@ -511,7 +519,12 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
             }}
 
           />
-          <Box sx={{ display: 'flex', justifyContent: 'center', paddingTop: 4 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', paddingTop: 4, alignItems: 'center'}}>
+          <HelpOutlineIcon
+                  sx={{ marginRight: 1, color: '#888', cursor: 'pointer'}}
+                  titleAccess="Click on a point to plot the orbit"
+                  fontSize="large"
+                />
             <FormControl sx={{ minWidth: 200, paddingRight: 2 }}>
               <Select
                 value={xAxis}

@@ -1,7 +1,5 @@
 interface OrbitDisplayProps {
-    isCanonical: boolean;
     plotData: any;
-    setIsCanonical: (isCanonical: boolean) => void;
     onUnitsChange?: (isCanonical: boolean) => void;
     icData: any;
     setCorrectorData: (data: any) => void;
@@ -20,11 +18,6 @@ interface CorrectorTableData {
 
 interface CorrectorTableProps {
     data: CorrectorTableData[] | null;
-    isCanonical: boolean;
-    conversionFactors: {
-        length: number; // Factor to convert from L.U to km
-        time: number;   // Factor to convert from T.U to seconds
-    };
     correctordata: any;
     setPlotData: (data: any) => void,
     setPlotDataIc: (data: any) => void,
@@ -56,7 +49,6 @@ interface AdvancedTableProps {
         body: string;
     } | null;
 
-    isCanonical: boolean;
     onSelectionChange?: (selectedRows: OrbitData[]) => void;
     handlePlotData?: (plotData: any) => void;
     handleIcData?: (icData: any) => void;

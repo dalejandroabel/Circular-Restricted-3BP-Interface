@@ -16,5 +16,8 @@
     "express": "^4.21.2",
     "mysql": "^2.18.1",
     "mysql2": "^3.13.0"
+  },
+  "devDependencies": {
+    "@types/papaparse": "^5.3.16"
   }
 }
