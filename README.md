@@ -5,7 +5,7 @@
 - Clone:
 
 ```
-git clone git@github.com-seap-udea:dalejandroabel/Circular-Restricted-3BP-Interface
+git clone https://github.com/dalejandroabel/Circular-Restricted-3BP-Interface.git
 ```
 
 - Install packages:
