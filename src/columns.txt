@@ -1,6 +1,0 @@
-bodies : | id_body | secondary | primary_id | mu              | radius        | primary_radius | distance      | period   | sourcedb | mass       |
-
-orbits: | id_body | x0          | y0   | z0   | vx0  | vy0        | vz0  | jc      | period  | rAfar    | rPfar    | stability_index | Dcross | Icross | Ncross | N1   | N2   | libration | batch | resonance | resonance_type | id_family | source |
-
-families: | id_family | family                                | sourcedb | libration | batch |
-
