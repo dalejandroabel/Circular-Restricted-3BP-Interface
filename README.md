@@ -39,13 +39,6 @@ apt install nodejs npm
     mysql -h localhost -u root -p crtbp < crtbp_db_backup.sql 
     ```
 
-- Run server: go to `src` directory and run:
-
-  ```
-  npm run dev
-  ```
-
-  This will create a server in `localhost:5173`.
 
 ## Installation in MacOS
 
@@ -119,3 +112,18 @@ Now you are ready to work with `MySQL`.
    ```
 
    
+## Run Locally
+
+- Run web: go to `src` directory and run:
+
+  ```
+  npm run dev
+  ```
+
+  This will create a server in `localhost:5173`.
+
+- Run server: go to `server` directory and run:
+
+  ```
+  npm start
+  ```
