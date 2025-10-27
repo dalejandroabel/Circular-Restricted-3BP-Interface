@@ -94,3 +94,28 @@ save it in a safe place.
    if it works, you will see an error similar to that in 4.
 
 Now you are ready to work with `MySQL`.
+
+
+## Setup 
+
+- Once install the dependencies, locate in the main folder and use the command
+
+   ```
+   make config
+   ```
+
+  to setup the package.json files and npm dependencies, use 
+
+    ```
+   make install
+   ```
+
+   To do the instalation of the packages.
+
+- To create the python virtual environment use the command
+
+   ```
+   make env
+   ```
+
+   

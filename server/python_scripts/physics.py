@@ -228,7 +228,7 @@ class dc():
         t = self.period
         X_new = X.copy()
         STM, X_mid, oldT = self._propagate_mid_half(X_new, mu, t)
-        while abs(X_mid[1]) > 1e-10 or abs(X_mid[3]) > 1e-10:
+        while abs(X_mid[1]) > 1e-11 or abs(X_mid[3]) > 1e-11:
             STM, X_mid, t = self._propagate_mid_half(X_new, mu, t)
             ax = self._EoM(0, X_mid, mu)[3]  # Aceleration x d(vx)/(dt)
             deltavy = -X_mid[3]/(STM[3, 4]-ax*STM[1, 4]/X_mid[4])

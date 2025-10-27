@@ -1,3 +1,6 @@
+import plotly.graph_objects as go
+import numpy as np
+from physics import LagrangePoints, Propagate, ms
 def defaultFigure():
 
     figure = go.Figure()

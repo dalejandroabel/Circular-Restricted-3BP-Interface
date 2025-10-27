@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import {
   Box,
@@ -11,27 +11,86 @@ import {
   TextField,
   Grid,
 } from '@mui/material';
-import { API_URL } from "../../config";
-import {OrbitParametersProps, BodyDetails } from './types';
+import { useAppContext } from './contexts';
+import { API_URL } from '../../config';
+import { OrbitParametersProps, BodyDetails, OrbitLimits } from './types';
 
-const ParametersTab: React.FC<OrbitParametersProps> = ({
-  data,
-  onParameterChange,
-}) => {
-  // State for body details and editable parameters
+// ============================================================================
+// TAB PANEL COMPONENT
+// ============================================================================
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+const TabPanel: React.FC<TabPanelProps> = ({ children, value, index, ...other }) => {
+  return (
+    <div role="tabpanel" hidden={value !== index} id={`orbit-tabpanel-${index}`} aria-labelledby={`orbit-tab-${index}`} {...other}>
+      {value === index && <Box sx={{ p: 0 }}>{children}</Box>}
+    </div>
+  );
+};
+
+// ============================================================================
+// PARAMETER DISPLAY COMPONENT
+// ============================================================================
+
+interface ParameterDisplayProps {
+  label: string;
+  value: number | null | undefined;
+  unit?: string;
+}
+
+const ParameterDisplay: React.FC<ParameterDisplayProps> = ({ label, value, unit = '' }) => {
+  const formattedValue =
+    value !== null && value !== undefined
+      ? Math.abs(value) < 1e-3
+        ? value.toExponential(4)
+        : value.toFixed(4)
+      : 'N/A';
+
+  return (
+    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+      <Typography variant="body1">{label}:</Typography>
+      <Typography variant="body1" color="text.secondary">
+        {formattedValue} {unit}
+      </Typography>
+    </Box>
+  );
+};
+
+// ============================================================================
+// UTILITY FUNCTION
+// ============================================================================
+
+const calculateTimeUnit = (bodyDetails: BodyDetails): number => {
+  const body_mass = bodyDetails.mass;
+  const body_distance = bodyDetails.distance;
+  const unit_mass = body_mass / bodyDetails.mu;
+  const G = 6.6743e-11;
+  const unit_period = Math.sqrt(body_distance ** 3 / (G * unit_mass));
+  return unit_period / 86400;
+};
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
+const ParametersTab: React.FC<OrbitParametersProps> = ({ data, onParameterChange }) => {
+  // ============================================================================
+  // CONTEXT
+  // ============================================================================
+  const { body } = useAppContext();
+
+  // ============================================================================
+  // STATE
+  // ============================================================================
   const [bodyDetails, setBodyDetails] = useState<BodyDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
-
-  // Editable parameters state
-  const [editableParameters, setEditableParameters] = useState<{
-    minPeriod: number | null;
-    maxPeriod: number | null;
-    minStabilityIndex: number | null;
-    maxStabilityIndex: number | null;
-    minJacobiConstant: number | null;
-    maxJacobiConstant: number | null;
-  }>({
+  const [editableParameters, setEditableParameters] = useState<OrbitLimits>({
     minPeriod: null,
     maxPeriod: null,
     minStabilityIndex: null,
@@ -40,27 +99,30 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
     maxJacobiConstant: null,
   });
 
-  // Fetch body details
+  // ============================================================================
+  // EFFECT - Fetch Body Details
+  // ============================================================================
   useEffect(() => {
-    const fetchBodyDetails = async () => {
-      if (!data?.body) return;
+    if (!data?.body) return;
 
+    const fetchBodyDetails = async () => {
       setError(null);
 
       try {
-        const response = await axios.get<BodyDetails>(`${API_URL}/bodies/${data.body}`);
+        const response = await axios.get<{ body: BodyDetails[] }>(`${API_URL}/bodies/${data.body}`);
         setBodyDetails(response.data.body[0]);
       } catch (err) {
         setError('Failed to fetch body details');
         console.error(err);
-      } finally {
       }
     };
 
     fetchBodyDetails();
   }, [data]);
 
-  // Memoized data processing
+  // ============================================================================
+  // PROCESSED DATA
+  // ============================================================================
   const processedData = useMemo(() => {
     if (!data?.orbits || data.orbits.length === 0) {
       return {
@@ -73,9 +135,9 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
       };
     }
 
-    const periods = data.orbits.map(orbit => orbit.period);
-    const stabilityIndices = data.orbits.map(orbit => orbit.stability_index);
-    const jacobiConstants = data.orbits.map(orbit => orbit.jc);
+    const periods = data.orbits.map((orbit) => orbit.period);
+    const stabilityIndices = data.orbits.map((orbit) => orbit.stability_index);
+    const jacobiConstants = data.orbits.map((orbit) => orbit.jc);
 
     return {
       minPeriod: Math.min(...periods),
@@ -87,7 +149,7 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
     };
   }, [data?.orbits]);
 
-  // Update editable parameters when processed data changes
+
   useEffect(() => {
     setEditableParameters({
       minPeriod: processedData.minPeriod,
@@ -99,44 +161,40 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
     });
   }, [processedData]);
 
-  // Handle tab change
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+  // ============================================================================
+  // HANDLERS
+  // ============================================================================
+  const handleTabChange = useCallback((_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
-  };
+  }, []);
 
-  // Handle parameter changes
-  const handleParameterChange = (field: keyof typeof editableParameters, value: string) => {
-    const numValue = value === '' ? null : parseFloat(value);
-    const updatedParameters = {
-      ...editableParameters,
-      [field]: numValue,
-    };
+  const handleParameterChange = useCallback(
+    (field: keyof OrbitLimits, value: string) => {
+      const numValue = value === '' ? null : parseFloat(value);
+      const updatedParameters = {
+        ...editableParameters,
+        [field]: numValue,
+      };
 
-    setEditableParameters(updatedParameters);
+      setEditableParameters(updatedParameters);
+      onParameterChange?.({ [field]: numValue });
+    },
+    [editableParameters, onParameterChange]
+  );
 
-    onParameterChange?.({
-      [field]: numValue,
-    });
-  };
-
-  // Render error state
+  // ============================================================================
+  // RENDER - Error State
+  // ============================================================================
   if (error) {
-    return (
-      <Alert severity="error">
-        {error}
-      </Alert>
-    );
-  }
-  
-  const includeTimeUnit = (bodydetails: BodyDetails) => {
-    const body_mass = bodydetails.mass;
-    const body_distance = bodydetails.distance;
-    const unit_mass = body_mass / bodydetails.mu;
-    const G = 6.67430e-11;
-    const unit_period = Math.sqrt(body_distance ** 3 / (G * unit_mass));
-    return unit_period / 86400; 
+    return <Alert severity="error">{error}</Alert>;
   }
 
+  // Use body from context if bodyDetails not loaded yet
+  const displayBody = bodyDetails || body;
+
+  // ============================================================================
+  // RENDER - Main
+  // ============================================================================
   return (
     <Box sx={{ width: '100%', height: 300, mt: 4, border: 1, borderColor: '#ccc', borderRadius: 5, p: 2 }}>
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
@@ -146,36 +204,21 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
         </Tabs>
       </Box>
 
-      {/* First Tab - Body Parameters */}
+      {/* Body Parameters Tab */}
       <TabPanel value={tabValue} index={0}>
-        <Container maxWidth="md" sx={{ padding: 0, height: 250, width: "100%", display: 'flex', justifyContent: 'center'}}>
-          <Stack spacing={0} sx={{ width: '100%' }}>
-            <Stack spacing={0} margin={0} sx={{ width: '100%', height: '100%', justifyContent: 'center'}}>
-              <ParameterDisplay
-                label="Mass Ratio"
-                value={bodyDetails?.mu}
-              />
-              <ParameterDisplay
-                label="Longitude Unit (km)"
-                value={bodyDetails?.distance}
-              />
-              <ParameterDisplay
-                label="Period (days)"
-                value={bodyDetails?.period}
-
-              />
-              <ParameterDisplay
-                label="Time Unit (days)"
-                value={bodyDetails ? includeTimeUnit(bodyDetails) : null}
-              />
-            </Stack>
+        <Container maxWidth="md" sx={{ padding: 0, height: 250, width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <Stack spacing={0} sx={{ width: '100%', height: '100%', justifyContent: 'center' }}>
+            <ParameterDisplay label="Mass Ratio" value={displayBody?.mu} />
+            <ParameterDisplay label="Longitude Unit (km)" value={displayBody?.distance} />
+            <ParameterDisplay label="Period (days)" value={displayBody?.period} />
+            <ParameterDisplay label="Time Unit (days)" value={displayBody ? calculateTimeUnit(displayBody) : null} />
           </Stack>
         </Container>
       </TabPanel>
 
-      {/* Second Tab - Editable Orbit Limits */}
+      {/* Orbit Limits Tab */}
       <TabPanel value={tabValue} index={1}>
-        <Container maxWidth="md" sx={{ padding: 0, height: 250, width: "100%", display: 'flex', justifyContent: 'center'}}>
+        <Container maxWidth="md" sx={{ padding: 0, height: 250, width: '100%', display: 'flex', justifyContent: 'center' }}>
           <Stack spacing={2} sx={{ width: '100%' }}>
             <Grid container spacing={2}>
               <Grid item xs={12} md={6}>
@@ -186,7 +229,7 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
                   value={editableParameters.minPeriod ?? ''}
                   onChange={(e) => handleParameterChange('minPeriod', e.target.value)}
                   InputProps={{
-                    inputProps: { step: "0.000001" }
+                    inputProps: { step: '0.000001' },
                   }}
                 />
               </Grid>
@@ -198,7 +241,7 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
                   value={editableParameters.maxPeriod ?? ''}
                   onChange={(e) => handleParameterChange('maxPeriod', e.target.value)}
                   InputProps={{
-                    inputProps: { step: "0.000001" }
+                    inputProps: { step: '0.000001' },
                   }}
                 />
               </Grid>
@@ -210,7 +253,7 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
                   value={editableParameters.minStabilityIndex ?? ''}
                   onChange={(e) => handleParameterChange('minStabilityIndex', e.target.value)}
                   InputProps={{
-                    inputProps: { step: "0.000001" }
+                    inputProps: { step: '0.000001' },
                   }}
                 />
               </Grid>
@@ -222,7 +265,7 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
                   value={editableParameters.maxStabilityIndex ?? ''}
                   onChange={(e) => handleParameterChange('maxStabilityIndex', e.target.value)}
                   InputProps={{
-                    inputProps: { step: "0.000001" }
+                    inputProps: { step: '0.000001' },
                   }}
                 />
               </Grid>
@@ -234,7 +277,7 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
                   value={editableParameters.minJacobiConstant ?? ''}
                   onChange={(e) => handleParameterChange('minJacobiConstant', e.target.value)}
                   InputProps={{
-                    inputProps: { step: "0.000001" }
+                    inputProps: { step: '0.000001' },
                   }}
                 />
               </Grid>
@@ -246,7 +289,7 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
                   value={editableParameters.maxJacobiConstant ?? ''}
                   onChange={(e) => handleParameterChange('maxJacobiConstant', e.target.value)}
                   InputProps={{
-                    inputProps: { step: "0.000001" }
+                    inputProps: { step: '0.000001' },
                   }}
                 />
               </Grid>
@@ -257,51 +300,5 @@ const ParametersTab: React.FC<OrbitParametersProps> = ({
     </Box>
   );
 };
-
-// Parameter Display Component
-const ParameterDisplay: React.FC<{
-  label: string;
-  value: number | null | undefined;
-  unit?: string;
-}> = ({ label, value, unit = '' }) => {
-  const formattedValue = value !== null && value !== undefined
-    ? Math.abs(value) < 1e-3
-      ? value.toExponential(4)
-      : value.toFixed(4)
-    : 'N/A';
-
-  return (
-    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-      <Typography variant="body1">{label}:</Typography>
-      <Typography variant="body1" color="text.secondary">
-        {formattedValue} {unit}
-      </Typography>
-    </Box>
-  );
-};
-// Tab Panel Component
-function TabPanel(props: {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}) {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`orbit-tabpanel-${index}`}
-      aria-labelledby={`orbit-tab-${index}`}
-      {...other}
-    >
-      {value === index && (
-        <Box sx={{ p: 0 }}>
-          {children}
-        </Box>
-      )}
-    </div>
-  );
-}
 
 export default ParametersTab;

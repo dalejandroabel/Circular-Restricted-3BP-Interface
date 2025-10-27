@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   MenuItem,
@@ -7,13 +7,16 @@ import {
   TextField,
   Popover,
   IconButton,
-  CircularProgress
+  CircularProgress,
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 import axios from 'axios';
-import { API_URL } from "../../config";
+import { API_URL } from '../../config';
 import { SystemOption, ApiResponse, SystemFormProps } from './types';
 
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
 
 const SystemForm: React.FC<SystemFormProps> = ({
   onDataLoaded,
@@ -21,41 +24,52 @@ const SystemForm: React.FC<SystemFormProps> = ({
   handlePlotData,
   handleBody,
   handleLoading,
-  loading
+  loading,
 }) => {
+  // ============================================================================
+  // STATE - Selection
+  // ============================================================================
   const [primaryBody, setPrimaryBody] = useState<string>('');
   const [secondaryBody, setSecondaryBody] = useState<string>('');
   const [family, setFamily] = useState<string>('');
-  const [p, setP] = useState<string>("");
-  const [q, setQ] = useState<string>("");
+  const [p, setP] = useState<string>('');
+  const [q, setQ] = useState<string>('');
   const [libration, setLibration] = useState<string>('');
   const [batch, setBatch] = useState<string>('');
 
+  // ============================================================================
+  // STATE - Options
+  // ============================================================================
   const [primaryOptions, setPrimaryOptions] = useState<SystemOption[]>([]);
   const [secondaryOptions, setSecondaryOptions] = useState<SystemOption[]>([]);
   const [familyOptions, setFamilyOptions] = useState<SystemOption[]>([]);
-
-  const [librationActive, setLibrationActive] = useState<boolean>(false);
-  const [batchActive, setBatchActive] = useState<boolean>(false);
-  const [librationOptions, setLibrationOptions] = useState<string[]>([]);
-
   const [pOptions, setPOptions] = useState<SystemOption[]>([]);
   const [qOptions, setQOptions] = useState<SystemOption[]>([]);
+  const [librationOptions, setLibrationOptions] = useState<string[]>([]);
+
+  // ============================================================================
+  // STATE - UI Control
+  // ============================================================================
+  const [librationActive, setLibrationActive] = useState<boolean>(false);
+  const [batchActive, setBatchActive] = useState<boolean>(false);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const [Norbits, setNorbits] = useState<number>();
+  const [Norbits, setNorbits] = useState<number | undefined>(undefined);
   const [database, setDatabase] = useState<string>('0');
   const [currentSecondary, setCurrentSecondary] = useState<string>('');
 
-
-  // Fetch primary bodies on component mount
+  // ============================================================================
+  // EFFECT - Fetch Primary Bodies
+  // ============================================================================
   useEffect(() => {
     const fetchPrimaryBodies = async () => {
       try {
+
         const response = await axios.get<ApiResponse>(`${API_URL}/primaries`);
-        const options = response.data.primaries?.map((body) => ({
-          id: body.id_body,
-          name: body.secondary,
-        })) || [];
+        const options =
+          response.data.primaries?.map((body) => ({
+            id: body.id_body,
+            name: body.secondary,
+          })) || [];
         setPrimaryOptions(options);
       } catch (error) {
         console.error('Error fetching primary bodies:', error);
@@ -65,20 +79,25 @@ const SystemForm: React.FC<SystemFormProps> = ({
     fetchPrimaryBodies();
   }, []);
 
-  // Fetch secondary bodies when primary body changes
+  // ============================================================================
+  // EFFECT - Fetch Secondary Bodies
+  // ============================================================================
   useEffect(() => {
-    const fetchSecondaryBodies = async () => {
-      if (!primaryBody) {
-        setSecondaryOptions([]);
-        return;
-      }
+    if (!primaryBody) {
+      setSecondaryOptions([]);
+      return;
+    }
 
+    const fetchSecondaryBodies = async () => {
       try {
-        const response = await axios.get<ApiResponse>(`${API_URL}/secondaries/${primaryBody}`);
-        const options = response.data.secondaries?.map((body) => ({
-          id: body.id_body,
-          name: body.secondary,
-        })) || [];
+        const response = await axios.get<ApiResponse>(
+          `${API_URL}/secondaries/${primaryBody}`
+        );
+        const options =
+          response.data.secondaries?.map((body) => ({
+            id: body.id_body,
+            name: body.secondary,
+          })) || [];
         setSecondaryOptions(options);
         setSecondaryBody('');
         setFamily('');
@@ -90,20 +109,25 @@ const SystemForm: React.FC<SystemFormProps> = ({
     fetchSecondaryBodies();
   }, [primaryBody]);
 
-  // Fetch families when secondary body changes
+  // ============================================================================
+  // EFFECT - Fetch Families
+  // ============================================================================
   useEffect(() => {
-    const fetchFamilies = async () => {
-      if (!primaryBody || !secondaryBody) {
-        setFamilyOptions([]);
-        return;
-      }
+    if (!primaryBody || !secondaryBody) {
+      setFamilyOptions([]);
+      return;
+    }
 
+    const fetchFamilies = async () => {
       try {
-        const response = await axios.get<ApiResponse>(`${API_URL}/families/${secondaryBody}`);
-        const options = response.data.families?.map((family) => ({
-          id: family.id_family,
-          name: family.family,
-        })) || [];
+        const response = await axios.get<ApiResponse>(
+          `${API_URL}/families/${secondaryBody}`
+        );
+        const options =
+          response.data.families?.map((family) => ({
+            id: family.id_family,
+            name: family.family,
+          })) || [];
         setFamilyOptions(options);
         setFamily('');
       } catch (error) {
@@ -114,57 +138,52 @@ const SystemForm: React.FC<SystemFormProps> = ({
     fetchFamilies();
   }, [primaryBody, secondaryBody]);
 
-  // Fetch resonance options when family changes
+  // ============================================================================
+  // EFFECT - Fetch Resonance Options and Libration/Batch
+  // ============================================================================
   useEffect(() => {
     if (!family) return;
 
     const fetchResonanceOptions = async () => {
       try {
-        const response = await axios.get<ApiResponse>(`${API_URL}/resonances/${secondaryBody}`);
+        const response = await axios.get<ApiResponse>(
+          `${API_URL}/resonances/${secondaryBody}`
+        );
 
-        // Group resonances by unique p values
         const uniquePOptions = Array.from(
-          new Set(response.data.resonances?.map(pair => pair.p))
+          new Set(response.data.resonances?.map((pair) => pair.p))
         )
           .sort((a, b) => Number(a) - Number(b))
-          .map(p => ({ id: p, name: p }));
+          .map((p) => ({ id: p, name: p }));
 
         setPOptions(uniquePOptions);
-
-        // Reset q options and selection when p changes
         setQOptions([]);
         setQ('');
       } catch (error) {
         console.error('Error fetching resonance options:', error);
       }
-    }
+    };
 
     const fetchLibrationBatch = async () => {
       try {
-        const response = await axios.get<ApiResponse>(`${API_URL}/librationbatch/${family}`);
+        const response = await axios.get<ApiResponse>(
+          `${API_URL}/librationbatch/${family}`
+        );
 
         if (response.data.family) {
           const librationData = response.data.family[0].libration;
           const batchData = response.data.family[0].batch;
 
-          // Handle libration
-          if (librationData && librationData !== "") {
+          if (librationData && librationData !== '') {
             setLibrationActive(true);
-            const libOptions = librationData.split('').map(num => `L${num}`);
+            const libOptions = librationData.split('').map((num) => `L${num}`);
             setLibrationOptions(libOptions);
           } else {
             setLibrationActive(false);
             setLibrationOptions([]);
           }
 
-          // Handle batch
-          if (batchData === 1) {
-            setBatchActive(true);
-          } else {
-            setBatchActive(false);
-          }
-
-          // Reset related fields
+          setBatchActive(batchData === 1);
           setLibration('');
           setBatch('');
         }
@@ -173,7 +192,7 @@ const SystemForm: React.FC<SystemFormProps> = ({
       }
     };
 
-    if (family == "9") {
+    if (family === '9') {
       fetchResonanceOptions();
       setBatchActive(false);
       setLibrationActive(false);
@@ -184,24 +203,27 @@ const SystemForm: React.FC<SystemFormProps> = ({
     }
   }, [family, secondaryBody]);
 
-  // Fetch Q options based on selected P
+  // ============================================================================
+  // EFFECT - Fetch Q Options
+  // ============================================================================
   useEffect(() => {
-    if (!family || family != "9" || !p) return;
+    if (!family || family !== '9' || !p) return;
 
     const fetchQOptions = async () => {
       try {
-        const response = await axios.get<ApiResponse>(`${API_URL}/resonances/${secondaryBody}`);
+        const response = await axios.get<ApiResponse>(
+          `${API_URL}/resonances/${secondaryBody}`
+        );
 
-        // Filter q options based on selected p
-        const filteredQOptions = response.data.resonances
-          ?.filter(pair => pair.p === p)
-          .map(pair => ({ id: pair.q, name: pair.q }))
-          .sort((a, b) => Number(a.id) - Number(b.id)) || [];
+        const filteredQOptions =
+          response.data.resonances
+            ?.filter((pair) => pair.p === p)
+            .map((pair) => ({ id: pair.q, name: pair.q }))
+            .sort((a, b) => Number(a.id) - Number(b.id)) || [];
 
         setQOptions(filteredQOptions);
 
-        // Reset q if it's not in the new options
-        if (!filteredQOptions.some(option => option.id === q)) {
+        if (!filteredQOptions.some((option) => option.id === q)) {
           setQ('');
         }
       } catch (error) {
@@ -210,18 +232,21 @@ const SystemForm: React.FC<SystemFormProps> = ({
     };
 
     fetchQOptions();
-  }, [p, secondaryBody, family]);
+  }, [p, secondaryBody, family, q]);
 
-  const handlePrimaryChange = (event: SelectChangeEvent<string>) => {
+  // ============================================================================
+  // HANDLERS - Selection Changes
+  // ============================================================================
+  const handlePrimaryChange = useCallback((event: SelectChangeEvent<string>) => {
     setPrimaryBody(event.target.value);
     setBatchActive(false);
     setLibrationActive(false);
     setSecondaryBody('');
     setFamily('');
     setFamilyOptions([]);
-  };
+  }, []);
 
-  const handleSecondaryChange = (event: SelectChangeEvent<string>) => {
+  const handleSecondaryChange = useCallback((event: SelectChangeEvent<string>) => {
     setSecondaryBody(event.target.value);
     setFamily('');
     setFamilyOptions([]);
@@ -229,117 +254,144 @@ const SystemForm: React.FC<SystemFormProps> = ({
     setLibrationActive(false);
     setBatch('');
     setLibration('');
-  };
+  }, []);
 
-  const handleFamilyChange = (event: SelectChangeEvent<string>) => {
+  const handleFamilyChange = useCallback((event: SelectChangeEvent<string>) => {
     setFamily(event.target.value);
-  };
+  }, []);
 
-  const isButtonEnabled = (): boolean => {
-    const hasBasicSelection = primaryBody && secondaryBody && family;
-
-    if (!hasBasicSelection) return false;
-
-    if (family === "9" && (!p || !q)) return false;
-    if (librationActive && !libration) return false;
-    if (batchActive && !batch) return false;
-
-    return true;
-  };
-
-  const handleLoadOrbits = async () => {
-
-    const body = await axios.get(`${API_URL}/bodies/${secondaryBody}`);
-    handleBody(body.data.body[0]);
+  // ============================================================================
+  // HANDLER - Load Orbits
+  // ============================================================================
+  const handleLoadOrbits = useCallback(async () => {
+    const bodyResponse = await axios.get(`${API_URL}/bodies/${secondaryBody}`);
+    handleBody(bodyResponse.data.body[0]);
 
     try {
       handleLoading(true);
 
-      console.log('Loading orbits with:', {
-        primaryBody,
-        secondaryBody,
-        family,
-        ...(family === "9" && { p, q }),
-        ...(librationActive && { libration }),
-        ...(batchActive && { batch })
-      });
+      const formattedP = p === '' ? '0' : p;
+      const formattedQ = q === '' ? '0' : q;
+      const formattedLibration = libration === '' ? '-1' : libration.replace('L', '');
+      const formattedBatch = batch === '' ? '0' : batch;
+      const formattedLimit = Norbits === undefined ? '0' : String(Norbits);
+      const formattedDatabase = database;
 
-      const formattedP = p === "" ? "0" : p;
-      const formattedQ = q === "" ? "0" : q;
-      const formattedLibration = libration === "" ? "-1" : libration.replace("L", "");
-      const formattedBatch = batch === "" ? "0" : batch;
-      const formattedLimit = Norbits === undefined ? "0" : String(Norbits);
-      const formatteddatabase = database;
-      const response = await axios.get<ApiResponse>(`${API_URL}/orbits/?S=${secondaryBody}&F=${family}&P=${formattedP}&Q=${formattedQ}&L=${formattedLibration}&B=${formattedBatch}&LIMIT=${formattedLimit}&D=${formatteddatabase}`);
+      const response = await axios.get<ApiResponse>(
+        `${API_URL}/orbits/?S=${secondaryBody}&F=${family}&P=${formattedP}&Q=${formattedQ}&L=${formattedLibration}&B=${formattedBatch}&LIMIT=${formattedLimit}&D=${formattedDatabase}`
+      );
 
-
-      const data = response.data;
-      onDataLoaded(data);
-
+      onDataLoaded(response.data);
 
       if (secondaryBody !== currentSecondary) {
-        const response_ic = await axios.get<ApiResponse>(`${API_URL}/initialconditions/${secondaryBody}`);
+        const responseIc = await axios.get<ApiResponse>(
+          `${API_URL}/initialconditions/${secondaryBody}`
+        );
 
-        const ic_data = response_ic.data;
-        let ic_data_modified = {
-          x: ic_data.initialconditions?.map((ic) => Number(ic.x0)),
-          y: ic_data.initialconditions?.map((ic) => Number(ic.y0)),
-          z: ic_data.initialconditions?.map((ic) => Number(ic.z0)),
-          vx: ic_data.initialconditions?.map((ic) => Number(ic.vx0)),
-          vy: ic_data.initialconditions?.map((ic) => Number(ic.vy0)),
-          vz: ic_data.initialconditions?.map((ic) => Number(ic.vz0)),
-          period: ic_data.initialconditions?.map((ic) => Number(ic.period)),
-          family: ic_data.initialconditions?.map((ic) => Number(ic.id_family)),
-          stability_index: ic_data.initialconditions?.map((ic) => Number(ic.stability_index)),
-          jacobi_constant: ic_data.initialconditions?.map((ic) => Number(ic.jacobi_constant)),
-          source: ic_data.initialconditions?.map((ic) => Number(ic.source)),
-        }
-        onIcDataLoaded(ic_data_modified);
+        const icDataModified = {
+          x: responseIc.data.initialconditions?.map((ic) => Number(ic.x0)),
+          y: responseIc.data.initialconditions?.map((ic) => Number(ic.y0)),
+          z: responseIc.data.initialconditions?.map((ic) => Number(ic.z0)),
+          vx: responseIc.data.initialconditions?.map((ic) => Number(ic.vx0)),
+          vy: responseIc.data.initialconditions?.map((ic) => Number(ic.vy0)),
+          vz: responseIc.data.initialconditions?.map((ic) => Number(ic.vz0)),
+          period: responseIc.data.initialconditions?.map((ic) => Number(ic.period)),
+          family: responseIc.data.initialconditions?.map((ic) => Number(ic.id_family)),
+          stability_index: responseIc.data.initialconditions?.map((ic) =>
+            Number(ic.stability_index)
+          ),
+          jacobi_constant: responseIc.data.initialconditions?.map((ic) =>
+            Number(ic.jacobi_constant)
+          ),
+          source: responseIc.data.initialconditions?.map((ic) => Number(ic.source)),
+        };
+
+        onIcDataLoaded(icDataModified);
         handlePlotData([]);
       }
 
       setCurrentSecondary(secondaryBody);
-
-    }
-    catch (error) {
+    } catch (error) {
       console.error('Error fetching orbits:', error);
-    }
-    finally {
+    } finally {
       handleLoading(false);
     }
+  }, [
+    secondaryBody,
+    family,
+    p,
+    q,
+    libration,
+    batch,
+    Norbits,
+    database,
+    currentSecondary,
+    handleBody,
+    handleLoading,
+    onDataLoaded,
+    onIcDataLoaded,
+    handlePlotData,
+  ]);
 
+  // ============================================================================
+  // UTILITY - Check if Button is Enabled
+  // ============================================================================
+  const isButtonEnabled = useCallback((): boolean => {
+    const hasBasicSelection = primaryBody && secondaryBody && family;
+    if (!hasBasicSelection) return false;
+    if (family === '9' && (!p || !q)) return false;
+    if (librationActive && !libration) return false;
+    if (batchActive && !batch) return false;
+    return true;
+  }, [primaryBody, secondaryBody, family, p, q, libration, batch, librationActive, batchActive]);
 
-  };
-
+  // ============================================================================
+  // RENDER
+  // ============================================================================
   return (
-    <Box sx={{
-      minWidth: 120,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 2,
-      height: 650,
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      border: 1,
-      borderColor: '#ccc',
-      borderRadius: 5,
+    <Box
+      sx={{
+        minWidth: 120,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        height: 650,
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        border: 1,
+        borderColor: '#ccc',
+        borderRadius: 5,
+      }}
+    >
+      <Box
+        sx={{
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <p style={{ fontSize: 24, fontWeight: 'normal' }}>System</p>
 
-    }}>
-      <Box sx={{ width: "100%", display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
-        {/* Primary Body Dropdown */}
-        <p style={{ fontSize: 24, fontWeight: "normal" }}>System</p>
-        <Box sx={{
-          display: 'flex', justifyContent: 'center', gap: 2, flexDirection: 'column', width: "100%",
-          alignItems: "center"
-        }}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 2,
+            flexDirection: 'column',
+            width: '100%',
+            alignItems: 'center',
+          }}
+        >
           <TextField
-            id = "primary-select"
+            id="primary-select"
             label="Primary Body"
             value={primaryBody}
-            onChange={(e) => handlePrimaryChange({ target: { value: e.target.value } } as SelectChangeEvent<string>)}
+            onChange={handlePrimaryChange}
             select
             fullWidth
-            sx={{ width: "80%" }}
+            sx={{ width: '80%' }}
           >
             {primaryOptions.map((option) => (
               <MenuItem key={option.id} value={option.id}>
@@ -348,16 +400,15 @@ const SystemForm: React.FC<SystemFormProps> = ({
             ))}
           </TextField>
 
-          {/* Secondary Body Dropdown */}
           <TextField
-            id = "secondary-select"
+            id="secondary-select"
             label="Secondary Body"
             value={secondaryBody}
-            onChange={(e) => handleSecondaryChange({ target: { value: e.target.value } } as SelectChangeEvent<string>)}
+            onChange={handleSecondaryChange}
             select
             fullWidth
             disabled={!primaryBody}
-            sx={{ width: "80%" }}
+            sx={{ width: '80%' }}
           >
             {secondaryOptions.map((option) => (
               <MenuItem key={option.id} value={option.id}>
@@ -366,16 +417,15 @@ const SystemForm: React.FC<SystemFormProps> = ({
             ))}
           </TextField>
 
-          {/* Family Dropdown */}
           <TextField
-            id = "family-select"
+            id="family-select"
             label="Family"
             value={family}
-            onChange={(e) => handleFamilyChange({ target: { value: e.target.value } } as SelectChangeEvent<string>)}
+            onChange={handleFamilyChange}
             select
             fullWidth
             disabled={!secondaryBody}
-            sx={{ width: "80%" }}
+            sx={{ width: '80%' }}
           >
             {familyOptions.map((option) => (
               <MenuItem key={option.id} value={option.id}>
@@ -384,16 +434,14 @@ const SystemForm: React.FC<SystemFormProps> = ({
             ))}
           </TextField>
 
-          {/* Resonance Dropdowns for Family 9 */}
-          {family == "9" && (
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', width: "80%" }}>
+          {family === '9' && (
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', width: '80%' }}>
               <TextField
-                id = "p-select"
+                id="p-select"
                 label="p"
                 value={p}
                 onChange={(e) => {
                   setP(e.target.value);
-                  // Reset q when p changes
                   setQ('');
                 }}
                 select
@@ -407,13 +455,13 @@ const SystemForm: React.FC<SystemFormProps> = ({
               </TextField>
 
               <TextField
-                id = "q-select"
+                id="q-select"
                 label="q"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 select
                 fullWidth
-                disabled={!p} // Disable q until p is selected
+                disabled={!p}
               >
                 {qOptions.map((option) => (
                   <MenuItem key={option.id} value={option.id}>
@@ -424,16 +472,15 @@ const SystemForm: React.FC<SystemFormProps> = ({
             </Box>
           )}
 
-          {/* Libration Dropdown */}
           {librationActive && (
             <TextField
-              id = "libration-select"
+              id="libration-select"
               label="Libration"
               value={libration}
               onChange={(e) => setLibration(e.target.value)}
               select
               fullWidth
-              sx={{ width: "80%" }}
+              sx={{ width: '80%' }}
             >
               {librationOptions.map((option) => (
                 <MenuItem key={option} value={option}>
@@ -443,7 +490,6 @@ const SystemForm: React.FC<SystemFormProps> = ({
             </TextField>
           )}
 
-          {/* Batch Dropdown */}
           {batchActive && (
             <TextField
               id="batch-select"
@@ -452,7 +498,7 @@ const SystemForm: React.FC<SystemFormProps> = ({
               onChange={(e) => setBatch(e.target.value)}
               select
               fullWidth
-              sx={{ width: "80%" }}
+              sx={{ width: '80%' }}
             >
               <MenuItem value="-1">South</MenuItem>
               <MenuItem value="1">North</MenuItem>
@@ -460,6 +506,7 @@ const SystemForm: React.FC<SystemFormProps> = ({
           )}
         </Box>
       </Box>
+
       <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
         <Popover
           open={Boolean(anchorEl)}
@@ -476,7 +523,6 @@ const SystemForm: React.FC<SystemFormProps> = ({
         >
           <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <TextField
-
               label="Database"
               value={database}
               onChange={(e) => setDatabase(e.target.value)}
@@ -486,25 +532,25 @@ const SystemForm: React.FC<SystemFormProps> = ({
               <MenuItem value="0">any</MenuItem>
               <MenuItem value="1">Planar Axis-symetric</MenuItem>
               <MenuItem value="2">JPL CRTBP</MenuItem>
-
             </TextField>
             <TextField
               label="Number of Orbits"
               type="number"
-              value={Norbits} // Replace `batch` with the appropriate state variable if needed
-              onChange={(e) => setNorbits(Number(e.target.value))} // Ensure the value is parsed as a number
+              value={Norbits}
+              onChange={(e) => setNorbits(Number(e.target.value))}
               fullWidth
             />
           </Box>
         </Popover>
+
         <IconButton
-          aria-label="Configuración"
+          aria-label="Configuration"
           size="large"
           onClick={(e) => setAnchorEl(e.currentTarget)}
           sx={{
             borderRadius: 2,
             p: 1,
-            '& .MuiSvgIcon-root': { fontSize: 0 }, // tamaño razonable
+            '& .MuiSvgIcon-root': { fontSize: 30 },
             boxShadow: 0,
             mr: 2,
           }}
@@ -528,9 +574,9 @@ const SystemForm: React.FC<SystemFormProps> = ({
             <Box
               component="span"
               sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
               <CircularProgress size={24} color="inherit" />

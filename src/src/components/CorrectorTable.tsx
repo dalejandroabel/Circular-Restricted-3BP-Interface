@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   Box,
   Switch,
@@ -12,9 +12,13 @@ import {
   styled,
 } from '@mui/material';
 import axios from 'axios';
+import { useAppContext } from './contexts';
 import { API_URL } from '../../config';
-import BodyContext from './contexts';
-import { CorrectorTableData, CorrectorTableProps } from './types';
+import { CorrectorTableData, CorrectorTableProps, UnitType } from './types';
+
+// ============================================================================
+// STYLED COMPONENTS
+// ============================================================================
 
 const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
   maxHeight: 200,
@@ -32,84 +36,121 @@ const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
   width: '100%',
 }));
 
-const StyledTableCell = styled(TableCell)(({ }) => ({
+const StyledTableCell = styled(TableCell)(() => ({
   fontSize: '0.875rem',
 }));
 
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
 
 const formatValue = (value: number, precision: number = 6): string => {
-  if (value === 0) {
-    return '0';
-  }
-  if (Math.abs(value) < 1 / (10 ** precision)) {
+  if (value === 0) return '0';
+  if (Math.abs(value) < 1 / 10 ** precision) {
     return value.toExponential(precision);
   }
   return value.toFixed(precision);
 };
 
 const formatExponential = (value: number, precision: number = 3): string => {
-  if (value === 0) {
-    return '0';
-  }
-  const formattedValue = value.toExponential(precision);
-  return formattedValue;
-}
-const CorrectorTable: React.FC<CorrectorTableProps> = ({
-  data,
-  status
-}) => {
+  if (value === 0) return '0';
+  return value.toExponential(precision);
+};
 
+// ============================================================================
+// CORRECTOR TABLE COMPONENT
+// ============================================================================
+
+interface CorrectorTableDisplayProps {
+  data: CorrectorTableData[] | null;
+  status: string;
+}
+
+const CorrectorTable: React.FC<CorrectorTableDisplayProps> = ({ data, status }) => {
+  // ============================================================================
+  // CONTEXT & STATE
+  // ============================================================================
+  const { body } = useAppContext();
   const [units_switch, setUnitsSwitch] = useState(true);
   const [current_unit, setCurrentUnit] = useState('canonical');
 
-  const body = useContext<any>(BodyContext);
-  const body_distance = body?.distance;
-  const body_mass = body?.mass;
-  const mu = body?.mu;
-  const unit_mass = body_mass / mu;
-  const G = 6.67430e-11;
-  const unit_period = Math.sqrt(body_distance ** 3 / (G * unit_mass));
+  // ============================================================================
+  // DERIVED VALUES
+  // ============================================================================
+  const { body_distance, unit_period } = useMemo(() => {
+    if (!body) return { body_distance: 0, unit_period: 0 };
 
+    const body_distance = body.distance;
+    const body_mass = body.mass;
+    const mu = body.mu;
+    const unit_mass = body_mass / mu;
+    const G = 6.6743e-11;
+    const unit_period = Math.sqrt(body_distance ** 3 / (G * unit_mass));
 
-  const getUnitLabel = (type: 'length' | 'velocity' | 'time') => {
-    if (!units_switch) {
-      // Physical units
-      if (type === 'length') return '[km]';
-      if (type === 'velocity') return '[km/s]';
-      if (type === 'time') return '[days]';
-    }
-    // Canonical units
+    return { body_distance, unit_period };
+  }, [body]);
 
-    if (type === 'length') return '[L.U]';
-    if (type === 'velocity') return '[L.U/T.U]';
-    if (type === 'time') return '[T.U]';
-
-    return '';
-  };
-
-
-  const convertValue = (value: number, type: 'length' | 'velocity' | 'time') => {
-    if (!units_switch) {
-      // Physical units
-      if (type === 'length') return value * body_distance;
-      if (type === 'velocity') return value * (body_distance / unit_period);
-      if (type === 'time') return value * (unit_period / 86400);
-      setCurrentUnit('physical');
-    } else {
-      if (current_unit !== 'canonical') {
-      // Canonical units
-      if (type === 'length') return value / body_distance;
-      if (type === 'velocity') return value / (body_distance / unit_period);
-      if (type === 'time') return value / (unit_period / 86400);
-      setCurrentUnit('canonical');
+  // ============================================================================
+  // UNIT CONVERSION FUNCTIONS
+  // ============================================================================
+  const getUnitLabel = useCallback(
+    (type: UnitType) => {
+      if (!units_switch) {
+        if (type === 'length') return '[km]';
+        if (type === 'velocity') return '[km/s]';
+        if (type === 'time') return '[days]';
       }
-      else {
-        return value;
-      }
-    }
-    return value;
-  };
+      if (type === 'length') return '[L.U]';
+      if (type === 'velocity') return '[L.U/T.U]';
+      if (type === 'time') return '[T.U]';
+      return '';
+    },
+    [units_switch]
+  );
 
+  const convertValue = useCallback(
+    (value: number, type: UnitType) => {
+      if (!units_switch) {
+        if (type === 'length') return value * body_distance;
+        if (type === 'velocity') return value * (body_distance / unit_period);
+        if (type === 'time') return value * (unit_period / 86400);
+        if (current_unit !== 'physical') {
+          setCurrentUnit('physical');
+        }
+      } else {
+        if (current_unit !== 'canonical') {
+          if (type === 'length') return value / body_distance;
+          if (type === 'velocity') return value / (body_distance / unit_period);
+          if (type === 'time') return value / (unit_period / 86400);
+          setCurrentUnit('canonical');
+        }
+      }
+      return value;
+    },
+    [units_switch, body_distance, unit_period, current_unit]
+  );
+
+  // ============================================================================
+  // DOWNLOAD HANDLER
+  // ============================================================================
+  const handleDownload = useCallback(() => {
+    if (!data || data.length === 0) return;
+
+    const finalConditions = data[data.length - 1];
+    const blob = new Blob([JSON.stringify(finalConditions, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'final_conditions.json';
+    link.click();
+    URL.revokeObjectURL(url);
+  }, [data]);
+
+  // ============================================================================
+  // RENDER - Empty State
+  // ============================================================================
   if (!data || data.length === 0) {
     return (
       <Box
@@ -119,29 +160,50 @@ const CorrectorTable: React.FC<CorrectorTableProps> = ({
           fontWeight: 'bold',
           padding: 0,
           textAlign: 'center',
-          width: "100%",
+          width: '100%',
           height: 300,
-          alignItems: "center",
-          justifyContent: "center",
+          alignItems: 'center',
+          justifyContent: 'center',
           border: 1,
           borderColor: '#ccc',
-          borderRadius: 5
+          borderRadius: 5,
         }}
       >
         No data available to correct, plot an orbit and click Close Orbit to correct
       </Box>
-    )
+    );
   }
 
+  // ============================================================================
+  // RENDER - Main
+  // ============================================================================
   return (
-    <Box sx={{
-      width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center',
+    <Box
+      sx={{
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        border: 1,
+        borderColor: '#ccc',
+        borderRadius: 5
+      }}
+    >
+      <Typography
+        sx={{
+          fontSize: 20,
+          fontWeight: 'bold',
+          backgroundColor: '#1976d2',
+          width: '100%',
+          color: 'white',
+          textAlign: 'center',
+          borderBottomColor: 'white',
+          borderBottomWidth: 1,
+        }}
+      >
+        Correction Process
+      </Typography>
 
-    }}>
-      <Typography sx={{
-        fontSize: 20, fontWeight: "bold", backgroundColor: "#1976d2",
-        width: "100%", color: "white", textAlign: "center", borderBottomColor: "white", borderBottomWidth: 1
-      }}>Correction Process</Typography>
       <StyledTableContainer>
         <Table stickyHeader size="small">
           <TableHead>
@@ -186,26 +248,12 @@ const CorrectorTable: React.FC<CorrectorTableProps> = ({
           </TableBody>
         </Table>
       </StyledTableContainer>
+
       <Box display="flex" justifyContent="center" marginTop={2}>
-        <Box sx={{ margin: 2, fontSize: '1rem', fontWeight: 'bold' }}>
-          {status}
-        </Box>
+        <Box sx={{ margin: 2, fontSize: '1rem', fontWeight: 'bold' }}>{status}</Box>
 
         <button
-          onClick={() => {
-            if (data.length > 0) {
-              const finalConditions = data[data.length - 1];
-              const blob = new Blob([JSON.stringify(finalConditions, null, 2)], {
-                type: 'application/json',
-              });
-              const url = URL.createObjectURL(blob);
-              const link = document.createElement('a');
-              link.href = url;
-              link.download = 'final_conditions.json';
-              link.click();
-              URL.revokeObjectURL(url);
-            }
-          }}
+          onClick={handleDownload}
           style={{
             backgroundColor: '#1976d2',
             color: 'white',
@@ -217,6 +265,7 @@ const CorrectorTable: React.FC<CorrectorTableProps> = ({
         >
           Download Final Conditions
         </button>
+
         <Box>
           <Box sx={{ alignItems: 'center', marginLeft: 4, justifyContent: 'center' }}>
             <Box sx={{ fontSize: '1rem', fontWeight: 'bold' }}>
@@ -229,33 +278,30 @@ const CorrectorTable: React.FC<CorrectorTableProps> = ({
             />
           </Box>
         </Box>
-
       </Box>
     </Box>
   );
 };
 
 
-
-// Example usage with parent component
 const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
   correctordata,
   setPlotData,
   setPlotDataIc,
 }) => {
-  // Sample data
+
+
+  const { body } = useAppContext();
   const [tabledata, setTableData] = useState<CorrectorTableData[]>([]);
-  const body = useContext<any>(BodyContext);
   const [status_correction, setStatus] = useState('');
 
-  useEffect(() => {
-    if (!correctordata) return;
+  const lastProcessedICKey = useRef<string | null>(null);
 
-    let isCancelled = false; // safety flag in case component unmounts
-    setStatus('Correcting orbit...');
-    setTableData([correctordata]);
 
-    const correctedPlotData = async (lastData: CorrectorTableData) => {
+  const correctedPlotData = useCallback(
+    async (lastData: CorrectorTableData) => {
+      if (!body) return null;
+
       try {
         const mu = body.mu;
         const orbitResponse = await axios.post(`${API_URL}/orbits/propagate/`, {
@@ -277,11 +323,17 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
       } catch (error) {
         console.error('Error propagating orbit:', error);
         setStatus('Failed to propagate orbit');
+        return null;
       }
-    };
+    },
+    [body]
+  );
 
-    const correctionLoop = async (prevData: CorrectorTableData[]) => {
-      if (isCancelled) return;
+
+  const correctionLoop = useCallback(
+    async (prevData: CorrectorTableData[], isCancelled: { current: boolean }) => {
+      if (isCancelled.current || !body) return;
+
       const lastData = prevData[prevData.length - 1];
 
       if (lastData.iteration > 10) {
@@ -317,10 +369,8 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
           },
         ];
 
-        // Update table state incrementally
         setTableData(newData);
 
-        // Convergence condition
         const converged =
           newCorrectorData.deltax === 0 &&
           newCorrectorData.deltavy === 0 &&
@@ -349,29 +399,40 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
           return;
         }
 
-        // Continue iteration
-        await correctionLoop(newData);
+        await correctionLoop(newData, isCancelled);
       } catch (error) {
         console.error('Error during correction:', error);
         setStatus('Error during correction');
       }
-    };
+    },
+    [body, correctedPlotData, setPlotData, setPlotDataIc]
+  );
 
-    correctionLoop([correctordata]);
+
+  useEffect(() => {
+    if (!correctordata || !body || correctordata.iteration !== 0) return;
+
+    const currentICKey = `${correctordata.x.toFixed(12)}|${correctordata.vy.toFixed(12)}|${correctordata.vz.toFixed(12)}|${correctordata.period.toFixed(12)}`;
+
+    if (lastProcessedICKey.current === currentICKey) {
+      return;
+    }
+    lastProcessedICKey.current = currentICKey;
+    const isCancelled = { current: false };
+    setStatus('Correcting orbit...');
+    setTableData([correctordata]);
+
+    correctionLoop([correctordata], isCancelled);
 
     return () => {
-      isCancelled = true;
+      isCancelled.current = true;
     };
-  }, [correctordata]);
+  }, [correctordata, correctionLoop, body]);
 
-  return (
-    <CorrectorTable
-      data={tabledata}
-      correctordata={undefined}
-      setPlotData={setPlotData}
-      setPlotDataIc={setPlotDataIc}
-      status={status_correction} />
-  );
+  // ============================================================================
+  // RENDER
+  // ============================================================================
+  return <CorrectorTable data={tabledata} status={status_correction} />;
 };
 
 export default CorrectorDataDisplay;

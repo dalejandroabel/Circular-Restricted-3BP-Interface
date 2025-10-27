@@ -1,142 +1,194 @@
-import React, { useContext, useEffect, useState } from 'react';
-import {
-  Box,
-  Button,
-} from '@mui/material';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Box, Button } from '@mui/material';
 import Plot from 'react-plotly.js';
-import BodyContext from './contexts';
-import { API_URL } from '../../config';
 import axios from 'axios';
+import { useAppContext } from './contexts';
+import { API_URL } from '../../config';
 import { OrbitDisplayProps } from './types';
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
 
 const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
   plotData,
   icData,
-  setCorrectorData }) => {
+  setCorrectorData,
+}) => {
+  // ============================================================================
+  // CONTEXT
+  // ============================================================================
+  const { body } = useAppContext();
 
-  const [orbitsPlotData, setOrbitPlotData] = useState<Partial<Plotly.Data>[]>([{
-    x: [],
-    y: [],
-    type: 'scatter',
-    mode: 'lines',
-    hovertemplate: 'x: %{x}<br>vy: %{y}',
-    customdata: [[]],
-    name: ""
-  }]);
+  // ============================================================================
+  // STATE
+  // ============================================================================
+  const [orbitsPlotData, setOrbitPlotData] = useState<Partial<Plotly.Data>[]>([
+    {
+      x: [],
+      y: [],
+      type: 'scatter',
+      mode: 'lines',
+      hovertemplate: 'x: %{x}<br>vy: %{y}',
+      customdata: [[]],
+      name: '',
+    },
+  ]);
+
   const [layout, setLayout] = useState<any>({
-    b: 0, l: 0, r: 0, t: 0, pad: 0,
+    b: 0,
+    l: 0,
+    r: 0,
+    t: 0,
+    pad: 0,
   });
-  const body = useContext<any>(BodyContext);
+
+  // ============================================================================
+  // DERIVED VALUES
+  // ============================================================================
   const R2 = body?.radius;
   const R1 = body?.primary_radius;
+  const mu = body?.mu || 0;
 
+  // ============================================================================
+  // EFFECT - Fetch and Process Plot Data
+  // ============================================================================
   useEffect(() => {
-
-    if (!plotData || plotData.length == 0) {
+    if (!plotData || plotData.length === 0 || !body) {
       return;
     }
+
     const fetchPlotData = async () => {
-      var dataToPlot: Partial<Plotly.Data>[] = [];
+      let dataToPlot: Partial<Plotly.Data>[] = [];
+
       try {
         let lagrangeLen = 2;
         let maxCoords = [0, 0, 0];
+        
 
         // Calculate maxCoords from orbit data
         plotData.forEach((orbit: any) => {
           if (!orbit.x || !orbit.y || !orbit.z) return;
 
-          const _validX = orbit.x.filter((val: number) => typeof val === "number" && !isNaN(val));
-          const validY = orbit.y.filter((val: number) => typeof val === "number" && !isNaN(val));
-          const validZ = orbit.z.filter((val: number) => typeof val === "number" && !isNaN(val));
+          const _validX = orbit.x.filter(
+            (val: number) => typeof val === 'number' && !isNaN(val)
+          );
+          const validY = orbit.y.filter(
+            (val: number) => typeof val === 'number' && !isNaN(val)
+          );
+          const validZ = orbit.z.filter(
+            (val: number) => typeof val === 'number' && !isNaN(val)
+          );
 
-          const validX = _validX.map((val: number) => val - (1 - body.mu));
+          const validX = _validX.map((val: number) => val - (1 - mu));
 
           if (validX.length) maxCoords[0] = Math.max(maxCoords[0], ...validX);
           if (validY.length) maxCoords[1] = Math.max(maxCoords[1], ...validY);
           if (validZ.length) maxCoords[2] = Math.max(maxCoords[2], ...validZ);
         });
 
-        // Get Lagrange points from API
-        const { data: Lagrange } = await axios.get(`${API_URL}/orbits/lagrange/${body.id_body}`);
+        // Get Lagrange points
+        const { data: Lagrange } = await axios.get(
+          `${API_URL}/orbits/lagrange/${body.id_body}`
+        );
         const LagrangeData = JSON.parse(Lagrange.data);
-        const [L1, L2, L3] = [LagrangeData.L1 - (1 - body.mu), LagrangeData.L2 - (1 - body.mu), LagrangeData.L3 - (1 - body.mu)];
+        const [L1, L2, L3] = [
+          LagrangeData.L1 - (1 - mu),
+          LagrangeData.L2 - (1 - mu),
+          LagrangeData.L3 - (1 - mu),
+        ];
 
-        // Create orbit traces with line style (as in Python: black, width 1, mode "lines")
+        // Create orbit traces
         const orbitTraces = plotData
           .filter((orbit: any) => orbit.x && orbit.y && orbit.z)
           .map((orbit: any, index: number) => {
-            // Adjust lagrangeLen if any orbit has negative x values
             if (Math.min(...orbit.x) < 0) {
               lagrangeLen = 3;
             }
             return {
-              x: orbit.x.map((val: number) => val - (1 - body.mu)),
+              x: orbit.x.map((val: number) => val - (1 - mu)),
               y: orbit.y,
               z: orbit.z,
-              type: "scatter3d",
-              mode: "lines",
-              line: { color: "black", width: 1 },
-              hoverinfo: "skip",
+              type: 'scatter3d',
+              mode: 'lines',
+              line: { color: 'black', width: 1 },
+              hoverinfo: 'skip',
               name: `Orbit ${index + 1}`,
             };
           });
 
-        // Fetch R2 sphere data from API and create its trace
-        const { data: R2_sphere_ } = await axios.post(`${API_URL}/orbits/sphere/`, { R: R2, N:2, mu: body.mu });
+        // Fetch R2 sphere
+        const { data: R2_sphere_ } = await axios.post(
+          `${API_URL}/orbits/sphere/`,
+          { R: R2, N: 2, mu: mu }
+        );
         const R2_sphere = JSON.parse(R2_sphere_.data);
         const R2SphereTrace = {
           x: R2_sphere.x,
           y: R2_sphere.y,
           z: R2_sphere.z,
-          type: "surface",
-          colorscale: [[0, "blue"], [1, "blue"]],
-          hoverinfo: "skip",
+          type: 'surface',
+          colorscale: [
+            [0, 'blue'],
+            [1, 'blue'],
+          ],
+          hoverinfo: 'skip',
           showscale: false,
-          contours: { x: { highlight: false }, y: { highlight: false }, z: { highlight: false } },
+          contours: {
+            x: { highlight: false },
+            y: { highlight: false },
+            z: { highlight: false },
+          },
         };
 
         if (maxCoords[0] < Math.abs(L1)) {
           maxCoords[0] = Math.abs(L1);
         }
-        // Adjust maxCoords if needed (mimicking Python behavior)
+
         if (lagrangeLen === 3 && maxCoords[0] < Math.abs(L3)) {
           maxCoords[0] = Math.abs(L3);
         }
 
-        // Fetch R1 sphere if required (only if lagrangeLen is 3)
+        // Fetch R1 sphere if needed
         let R1SphereTrace = null;
         if (lagrangeLen === 3) {
           if (maxCoords[0] < Math.abs(L3)) {
             maxCoords[0] = Math.abs(L3);
           }
-          const { data: R1_sphere_ } = await axios.post(`${API_URL}/orbits/sphere/`, { R: R1, N: 1,mu: body.mu });
+          const { data: R1_sphere_ } = await axios.post(
+            `${API_URL}/orbits/sphere/`,
+            { R: R1, N: 1, mu: mu }
+          );
           const R1_sphere = JSON.parse(R1_sphere_.data);
           R1SphereTrace = {
             x: R1_sphere.x,
             y: R1_sphere.y,
             z: R1_sphere.z,
-            type: "surface",
-            colorscale: [[0, "red"], [1, "red"]],
-            hoverinfo: "skip",
+            type: 'surface',
+            colorscale: [
+              [0, 'red'],
+              [1, 'red'],
+            ],
+            hoverinfo: 'skip',
             showscale: false,
           };
         }
 
-        // Create Lagrange points trace
+        // Lagrange points trace
         const LagrangeTrace = {
           x: [L1, L2, L3].slice(0, lagrangeLen),
           y: Array(lagrangeLen).fill(0),
           z: Array(lagrangeLen).fill(0),
-          type: "scatter3d",
-          mode: "markers+text",
-          marker: { size: 1, color: "black" },
-          text: ["L1", "L2", "L3"].slice(0, lagrangeLen),
-          textposition: "top right",
-          hoverinfo: "skip",
-          name: "Lagrange points",
+          type: 'scatter3d',
+          mode: 'markers+text',
+          marker: { size: 1, color: 'black' },
+          text: ['L1', 'L2', 'L3'].slice(0, lagrangeLen),
+          textposition: 'top right',
+          hoverinfo: 'skip',
+          name: 'Lagrange points',
         };
 
-        // Combine all traces in the order: orbits, spheres, then Lagrange points
+        // Combine traces
         dataToPlot = [
           ...orbitTraces,
           R2SphereTrace,
@@ -144,82 +196,93 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
           LagrangeTrace,
         ];
 
-
-        // Determine axis limits (similar to Python: limit based on maxCoords and factor)
+        // Set axis limits
         const factor = 1.1;
         const limit = Math.max(...maxCoords);
         const ranges = [-limit * factor, limit * factor];
-        // Update layout with camera settings matching Python's
+
         setLayout({
           scene: {
-            aspectmode: "manual",
+            aspectmode: 'manual',
             aspectratio: { x: 1, y: 1, z: 1 },
-            xaxis: { title: "X", range: ranges, showspikes: false, showline: true },
-            yaxis: { title: "Y", range: ranges, showspikes: false, showline: true },
-            zaxis: { title: "Z", range: ranges, showspikes: false, showline: true },
+            xaxis: { title: 'X', range: ranges, showspikes: false, showline: true },
+            yaxis: { title: 'Y', range: ranges, showspikes: false, showline: true },
+            zaxis: { title: 'Z', range: ranges, showspikes: false, showline: true },
             camera: { eye: { x: 1.3, y: 1.3, z: 1.3 } },
           },
-          legend: { xanchor: "right", x: 0.9 },
+          legend: { xanchor: 'right', x: 0.9 },
           margin: { t: 0, b: 0, l: 0, r: 0, pad: 0 },
         });
-
       } catch (error) {
-        console.error("Error in plot generation:", error);
-      }
-      finally {
+        console.error('Error in plot generation:', error);
+      } finally {
         setOrbitPlotData(dataToPlot);
       }
     };
 
     fetchPlotData();
-  }, [plotData]);
+  }, [plotData, body, mu, R1, R2]);
 
-
-
-  const handleCloseOrbit = async () => {
-    if (!icData) {
+  // ============================================================================
+  // HANDLER - Close Orbit
+  // ============================================================================
+  const handleCloseOrbit = useCallback(() => {
+    if (!icData || !body) {
       return;
     }
-    if (Array.isArray(icData)) {
-      icData = icData[0];
-    }
-    let currentData = {
+
+    let currentIcData = Array.isArray(icData) ? icData[0] : icData;
+    
+    if (!currentIcData || typeof currentIcData !== 'object' || !('x' in currentIcData)) {
+      console.error("IC data is invalid or incomplete. Cannot initiate correction.");
+      return;
+  }
+
+    const currentData = {
       iteration: 0,
-      x: icData.centered? icData.x - (1 - body.mu): icData.x ,
-      vy: icData.vy,
-      vz: icData.vz,
-      period: icData.period,
+      x: currentIcData.centered
+        ? currentIcData.x - (1 - body.mu)
+        : currentIcData.x,
+      vy: currentIcData.vy,
+      vz: currentIcData.vz,
+      period: currentIcData.period,
       deltaX: 0,
       deltaVy: 0,
       deltaVz: 0,
-      centered: icData.centered,
+      centered: currentIcData.centered,
     };
 
-    setCorrectorData(currentData); 
-  };
+    setCorrectorData(currentData);
+  }, [icData, body, setCorrectorData]);
 
+  // ============================================================================
+  // RENDER
+  // ============================================================================
   return (
-    <Box sx={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      width: '100%',
-      border: 1,
-      borderColor: '#ccc',
-      borderRadius: 5,
-      height: 650,
-      mr: 0,
-      padding: 0
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        width: '100%',
+        border: 1,
+        borderColor: '#ccc',
+        borderRadius: 5,
+        height: 650,
+        mr: 0,
+        padding: 0,
+      }}
+    >
+      <p style={{ fontSize: 24, fontWeight: 'normal' }}>Orbit Display</p>
 
-    }}>
-      <p style={{ fontSize: 24, fontWeight: "normal" }}>Orbit Display</p>
-
-      <Box sx={{
-        height: '500px',
-        backgroundColor: '#f5f5f5',
-        borderRadius: '4px',
-        width: '95%',
-      }}>
+      <Box
+        sx={{
+          height: '500px',
+          backgroundColor: '#f5f5f5',
+          borderRadius: '4px',
+          width: '95%',
+        }}
+      >
         <Plot
           data={orbitsPlotData}
           layout={layout}
@@ -233,7 +296,16 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
         />
       </Box>
 
-      <Box sx={{ display: 'flex', justifyContent: "center", alignItems: 'center', width: '100%', padding: 2, gap: 2}}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          width: '100%',
+          padding: 2,
+          gap: 2,
+        }}
+      >
         <Button
           variant="contained"
           onClick={handleCloseOrbit}
@@ -245,15 +317,13 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
             textTransform: 'none',
             minWidth: '120px',
           }}
-          disabled={icData?.length > 1}
+          disabled={false}
         >
           Close orbit
         </Button>
-
       </Box>
     </Box>
   );
 };
 
 export default OrbitDisplay;
-
