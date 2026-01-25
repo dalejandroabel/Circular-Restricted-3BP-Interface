@@ -13,5 +13,5 @@ install:config
 pull:
 	git pull
 env:
-	python3 -m venv .crtbpenv
-	.crtbpenv/bin/pip install -r requirements.txt
+	python3 -m venv .crtbp_venv
+	.crtbp_venv/bin/pip install -r requirements.txt
