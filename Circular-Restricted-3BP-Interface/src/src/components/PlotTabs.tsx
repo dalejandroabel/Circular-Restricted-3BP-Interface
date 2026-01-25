@@ -16,15 +16,12 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import axios from 'axios';
 import { useAppContext } from './contexts';
 import { COLORS, API_URL } from '../../config';
-import { PlotTabsProps, TabPanelProps } from './types';
+import { PlotTabsProps, TabPanelProps, ApiResponse } from './types';
 // ============================================================================
 // CONSTANTS
 // ============================================================================
 
-const DATABASES = ['Planar axisymmetric', 'JPL crtbp'];
-const AXIS_VARIABLES = ['X', 'Vy', 'Vz', 'Period', 'Stability index', 'Jacobi constant'];
-const COLUMNS = ['x', 'vy', 'vz', 'period', 'stability_index', 'jacobi_constant'];
-const COLUMNS_PAR = ['x0', 'vy0', 'vz0', 'period', 'stability_index', 'jc'];
+
 
 // ============================================================================
 // TAB PANEL COMPONENT
@@ -51,13 +48,13 @@ const getToolTipIc = () => (
     arrow
   >
     <HelpOutlineIcon fontSize="large" sx={{
-            borderRadius: 2,
-            p: 1,
-            '& .MuiSvgIcon-root': { fontSize: 10 },
-            boxShadow: 0,
-            mr: 0,
-            color: '#888',
-          }} />
+      borderRadius: 2,
+      p: 1,
+      '& .MuiSvgIcon-root': { fontSize: 10 },
+      boxShadow: 0,
+      mr: 0,
+      color: '#888',
+    }} />
   </Tooltip>
 );
 
@@ -71,13 +68,13 @@ const getToolTipParametric = () => (
     arrow
   >
     <HelpOutlineIcon fontSize="large" sx={{
-            borderRadius: 2,
-            p: 1,
-            '& .MuiSvgIcon-root': { fontSize: 10 },
-            boxShadow: 0,
-            mr: 0,
-            color: '#888',
-          }} />
+      borderRadius: 2,
+      p: 1,
+      '& .MuiSvgIcon-root': { fontSize: 10 },
+      boxShadow: 0,
+      mr: 0,
+      color: '#888',
+    }} />
   </Tooltip>
 );
 
@@ -211,19 +208,21 @@ const get3DLayout = () => ({
   ],
 });
 
-const modifyData = (data: any) => {
-  return {
-    x: data.orbits.map((ic: any) => Number(ic.x0)),
-    y: data.orbits.map((ic: any) => Number(ic.y0)),
-    z: data.orbits.map((ic: any) => Number(ic.z0)),
-    vx: data.orbits.map((ic: any) => Number(ic.vx0)),
-    vy: data.orbits.map((ic: any) => Number(ic.vy0)),
-    vz: data.orbits.map((ic: any) => Number(ic.vz0)),
-    period: data.orbits.map((ic: any) => Number(ic.period)),
-    family: data.orbits.map((ic: any) => Number(ic.id_family)),
-    stability_index: data.orbits.map((ic: any) => Number(ic.stability_index)),
-    jacobi_constant: data.orbits.map((ic: any) => Number(ic.jc)),
-  };
+const modifyData = (data: any, columns: any[]) => {
+  if (!data || !data.orbits || data.orbits.length === 0) {
+    console.log('No data or empty orbits');
+    return {};
+  }
+  let modifiedData: any = {};
+  columns.forEach((column) => {
+    if (column.type === 'numerical') {
+      modifiedData[column.c_name] = data.orbits.map((ic: any) => Number(ic[column.c_name]));
+    } else if (column.type === 'categorical') {
+      modifiedData[column.c_name] = data.orbits.map((ic: any) => String(ic[column.c_name]));
+    }
+  });
+
+  return modifiedData;
 };
 
 // ============================================================================
@@ -235,6 +234,7 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
   tableData,
   setPlotData,
   setPlotDataIc,
+  columns
 }) => {
   // ============================================================================
   // CONTEXT
@@ -245,7 +245,8 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
   // STATE
   // ============================================================================
   const [tabValue, setTabValue] = useState(0);
-  const [selectedDatabase, setSelectedDatabase] = useState('');
+  const [databases, setDatabases] = useState<string[]>([]);
+  const [selectedDatabase, setSelectedDatabase] = useState<string | number>('');
   const [xAxis, setXAxis] = useState('');
   const [yAxis, setYAxis] = useState('');
   const [plotIcData, setPlotIcData] = useState([{ x: [], y: [] }]);
@@ -267,23 +268,17 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
 
     const fetchPlotData = async () => {
       try {
-        const response = await axios.get(`${API_URL}/families`);
-        const allFamilies = response.data.families;
-        const uniqueFamilies = Array.from(new Set(initialConditions.family));
-
-        if (!selectedDatabase) {
-          const uniqueDatabases = Array.from(new Set<string>(initialConditions.source));
+        if (!selectedDatabase)   {
+          const uniqueDatabases = Array.from(new Set<string | number>(initialConditions.source));
           setSelectedDatabase(uniqueDatabases[0]);
         }
+        const response = await axios.get(`${API_URL}/allfamilies/${selectedDatabase}`);
+        const allFamilies = response.data.families;
 
-        const colors = uniqueFamilies.map((family, index) => COLORS[index]);
-        const names = uniqueFamilies.map((family) =>
-          allFamilies.find((f: any) => f.id_family == family).family
-        );
 
-        const indices = initialConditions.source
+        const indices = (initialConditions.source
           .map((source: any, idx: number) => (source === selectedDatabase ? idx : null))
-          .filter((idx: any) => idx !== null);
+          .filter((idx: any) => idx !== null)) as number[];
 
         const modifiedIC = {
           x: indices.map((idx: number) => initialConditions.x[idx]),
@@ -299,7 +294,12 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
           jacobi_constant: indices.map((idx: number) => initialConditions.jacobi_constant[idx]),
         };
 
-        if (selectedDatabase == "1") {
+        const uniqueFamilies = Array.from(new Set(modifiedIC.family));
+        const colors = uniqueFamilies.map((family, index) => COLORS[index]);
+        const names = uniqueFamilies.map((family) =>
+          allFamilies.find((f: any) => f.id_family == family)?.name
+        );
+        if (['pax'].includes(String(selectedDatabase))) {
           const plotData = getPlanarData(modifiedIC, uniqueFamilies, colors, names);
           setPlotIcData(plotData);
           const layout = getPlanarLayout();
@@ -322,21 +322,22 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
   // EFFECT - Parametric Plot
   // ============================================================================
   useEffect(() => {
-    if (!initialConditions || !xAxis || !yAxis || !tableData) return;
+
+    if (!xAxis || !yAxis || !tableData) return;
+
+    let dataModified = modifyData(tableData, columns || []);
+
 
     const getParametricData = (xAxis: string, yAxis: string) => {
-      const modifiedData = modifyData(tableData);
-      const xData = modifiedData[COLUMNS[AXIS_VARIABLES.indexOf(xAxis)] as keyof typeof modifiedData];
-      const yData = modifiedData[COLUMNS[AXIS_VARIABLES.indexOf(yAxis)] as keyof typeof modifiedData];
+      const xData = dataModified[xAxis];
+      const yData = dataModified[yAxis];
 
-      const remainingColumns = COLUMNS.filter(
-        (col) =>
-          col !== COLUMNS[AXIS_VARIABLES.indexOf(xAxis)] &&
-          col !== COLUMNS[AXIS_VARIABLES.indexOf(yAxis)]
-      );
-      const customData = xData.map((_: any, idx: number) =>
-        remainingColumns.slice(0, 2).map((col) => modifiedData[col][idx])
-      );
+      const remainingColumns = Object.keys(dataModified).filter(
+        (col) => col !== xAxis && col !== yAxis && col !== 'family' && col !== 'source' && col !== 'body');
+      const customData = dataModified[remainingColumns[0]].map((_: any, idx: number) => [
+        dataModified[remainingColumns[0]][idx],
+        dataModified[remainingColumns[1]][idx],
+      ]);
 
       return [
         {
@@ -359,19 +360,34 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
       font: { size: 10 },
       margin: { t: 40, b: 40, l: 40, r: 40 },
       showlegend: false,
-      xaxis: { title: xAxis, zeroline: false },
-      yaxis: { title: yAxis, zeroline: false },
+      xaxis: { title: {text: xAxis}, zeroline: false },
+      yaxis: { title: {text: yAxis}, zeroline: false },
     });
 
     const plotData = getParametricData(xAxis, yAxis);
     setPlotParametricData(plotData);
     const layout = getParametricLayout(xAxis, yAxis);
     setPlotParametricLayout(layout);
-  }, [xAxis, yAxis, initialConditions, tableData]);
+  }, [xAxis, yAxis, tableData]);
 
   // ============================================================================
   // HANDLERS
   // ============================================================================
+
+  useEffect(() => {
+    loadDatabases();
+  }, []);
+
+  const loadDatabases = async () => {
+    try {
+      const response = await axios.get<ApiResponse>(`${API_URL}/databases/`);
+      setDatabases(response.data.databases || []);
+      return databases;
+    } catch (error) {
+      console.error('Error fetching databases:', error);
+      return [];
+    }
+  }
   const handleTabChange = useCallback((_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   }, []);
@@ -413,7 +429,6 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
 
       try {
         const mu = body.mu;
-        const centered = !(selectedDatabase == "1");
 
         const orbitResponse = await axios.post<any>(`${API_URL}/orbits/propagate/`, {
           x: orbitParams.x,
@@ -424,7 +439,6 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
           vz: orbitParams.vz,
           period: orbitParams.period,
           mu: mu,
-          centered: centered,
           method: 'RK45',
           N: 1000,
           atol: 1e-12,
@@ -442,9 +456,7 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
           vz: orbitParams.vz,
           period: orbitParams.period,
           mu: mu,
-          centered: centered,
         });
-        console.log(!(selectedDatabase == '1'));
       } catch (error) {
         console.error('Error handling plot click:', error);
       }
@@ -463,8 +475,8 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
       const clickedX = clickedPoint.x;
       const clickedY = clickedPoint.y;
 
-      const xColumn = COLUMNS_PAR[AXIS_VARIABLES.indexOf(xAxis)];
-      const yColumn = COLUMNS_PAR[AXIS_VARIABLES.indexOf(yAxis)];
+      const xColumn = xAxis;;
+      const yColumn = yAxis;
 
       const filteredOrbit = tableData.orbits.find(
         (orbit: any) => orbit[xColumn] == clickedX && orbit[yColumn] == clickedY
@@ -478,15 +490,14 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
       try {
         const mu = body.mu;
         const orbitResponse = await axios.post<any>(`${API_URL}/orbits/propagate/`, {
-          x: filteredOrbit.x0,
-          y: filteredOrbit.y0,
-          z: filteredOrbit.z0,
-          vx: filteredOrbit.vx0,
-          vy: filteredOrbit.vy0,
-          vz: filteredOrbit.vz0,
+          x: filteredOrbit.x,
+          y: filteredOrbit.y,
+          z: filteredOrbit.z,
+          vx: filteredOrbit.vx,
+          vy: filteredOrbit.vy,
+          vz: filteredOrbit.vz,
           period: filteredOrbit.period,
           mu: mu,
-          centered: filteredOrbit.source === 2,
           method: 'DOP853',
           N: 1000,
           atol: 1e-12,
@@ -496,15 +507,14 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
         const orbitData = orbitResponse.data.data;
         setPlotData([JSON.parse(orbitData)]);
         setPlotDataIc({
-          x: filteredOrbit.x0,
-          y: filteredOrbit.y0,
-          z: filteredOrbit.z0,
-          vx: filteredOrbit.vx0,
-          vy: filteredOrbit.vy0,
-          vz: filteredOrbit.vz0,
+          x: filteredOrbit.x,
+          y: filteredOrbit.y,
+          z: filteredOrbit.z,
+          vx: filteredOrbit.vx,
+          vy: filteredOrbit.vy,
+          vz: filteredOrbit.vz,
           period: filteredOrbit.period,
           mu: mu,
-          centered: filteredOrbit.source === 2,
         });
       } catch (error) {
         console.error('Error handling parameter click:', error);
@@ -541,7 +551,7 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
       }}
     >
       <Box sx={{ borderBottom: 1, borderColor: 'divider', marginLeft: 2, marginRight: 2 }}>
-        <Tabs value={tabValue} onChange={handleTabChange} centered>
+        <Tabs value={tabValue} onChange={handleTabChange} centered    >
           <Tab label="Initial Conditions Map" />
           <Tab label="Parametric map" />
         </Tabs>
@@ -581,19 +591,20 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
             </Box>
             <FormControl sx={{ display: 'flex', alignItems: 'center', width: '50%' }}>
               <Select
-                value={selectedDatabase}
+                value={selectedDatabase?.toString() || ''}
                 onChange={handleDatabaseChange}
                 displayEmpty
                 sx={{ backgroundColor: '#f5f5f5', width: '100%' }}
               >
                 <MenuItem value="" disabled>
-                  Database
+                  Select Database
                 </MenuItem>
-                {DATABASES.map((db, index) => (
-                  <MenuItem key={index + 1} value={index + 1}>
+                {databases.map((db, index) => (
+                  <MenuItem key={index} value={db}>
                     {db}
                   </MenuItem>
                 ))}
+
               </Select>
             </FormControl>
             <IconButton onClick={handleDownload} sx={{ marginLeft: 0 }}>
@@ -637,11 +648,17 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
                 <MenuItem value="" disabled>
                   X-axis variable
                 </MenuItem>
-                {AXIS_VARIABLES.map((variable) => (
-                  <MenuItem key={variable} value={variable}>
-                    {variable}
+                {columns?.map((variable) => {
+                  if (variable.c_name === "body" || variable.c_name === "family") {
+                  return null;
+                  }
+                  return (
+                  <MenuItem key={variable.c_name} value={variable.c_name}>
+                    {variable.c_name}
                   </MenuItem>
-                ))}
+                  );
+                })
+                }
               </Select>
             </FormControl>
             <FormControl sx={{ minWidth: 200, paddingLeft: 2 }}>
@@ -654,11 +671,17 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
                 <MenuItem value="" disabled>
                   Y-axis variable
                 </MenuItem>
-                {AXIS_VARIABLES.map((variable) => (
-                  <MenuItem key={variable} value={variable}>
-                    {variable}
+                {columns?.map((variable) => {
+                  if (variable.c_name === "body" || variable.c_name === "family") {
+                  return null;
+                  }
+                  return (
+                  <MenuItem key={variable.c_name} value={variable.c_name}>
+                    {variable.c_name}
                   </MenuItem>
-                ))}
+                  );
+                })
+                }
               </Select>
             </FormControl>
           </Box>

@@ -9,12 +9,11 @@ export interface BodyData {
   secondary: string;
   primary_id: string;
   mu: number;
-  radius: number;
-  primary_radius: number;
-  distance: number;
-  period: number;
-  sourcedb: number;
-  mass: number;
+  radius_ul: number;
+  distance_km: number;
+  period_days: number;
+  source: number;
+  mass_kg: number;
 }
 
 export interface AppContextValue {

@@ -34,3 +34,9 @@ reset_server:
 	make -C .. pull
 	make SCOPE=server config
 	make run
+
+create_venv:
+	cd server
+	python3 -m venv .crtbp_venv	
+	source .crtbp_venv/bin/activate
+	pip install -r requirements.txt

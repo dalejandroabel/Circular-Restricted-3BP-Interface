@@ -39,10 +39,7 @@ def Propagate():
     atol = float(sys.argv[11])
     rtol = float(sys.argv[12])
     N = int(sys.argv[13])
-    centered = False if sys.argv[14] == "false" else True
     Y0 = np.array([x, y, z, vx, vy, vz])
-    if not centered:
-        Y0[0] += (1-mu)
     t = np.linspace(0, period, int(N))
 
     Yrot = solve_ivp(EoM, t_span=[0, period], t_eval=t, y0=Y0, args=(
@@ -149,7 +146,6 @@ class dc():
 
     def _propagate_mid_half(self, X, mu, t):
         X = self._initial_conditions(X)
-        X[36] += (1-mu)
         t_span = [0, t]
         solution = solve_ivp(self._propagateSTM, y0=X, t_span=t_span,
                              events=(self._Ncrossings), args=(mu,), rtol=1e-12, atol=1e-12, dense_output=True)
@@ -249,12 +245,10 @@ if __name__ == "__main__":
         vz = float(sys.argv[7])
         mu = float(sys.argv[8])
         period = float(sys.argv[9])
-        centered = False if sys.argv[10] == "false" else True
-
         X = np.array([x,y,z,vx,vy,vz])
-
         system = dc(mu,X,period)
         system.DiffCorrectorSteps(X,period,"x")
+
     if sys.argv[1] == "Lagrange":
         mu = float(sys.argv[2])
         L1, L2, L3 = LagrangePoints(mu)

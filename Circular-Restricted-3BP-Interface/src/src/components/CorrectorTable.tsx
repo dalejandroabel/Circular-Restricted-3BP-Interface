@@ -80,12 +80,12 @@ const CorrectorTable: React.FC<CorrectorTableDisplayProps> = ({ data, status }) 
   const { body_distance, unit_period } = useMemo(() => {
     if (!body) return { body_distance: 0, unit_period: 0 };
 
-    const body_distance = body.distance;
-    const body_mass = body.mass;
+    const body_distance = body.distance_km ;
+    const body_mass = body.mass_kg;
     const mu = body.mu;
     const unit_mass = body_mass / mu;
     const G = 6.6743e-11;
-    const unit_period = Math.sqrt(body_distance ** 3 / (G * unit_mass));
+    const unit_period = Math.sqrt((body_distance *1e3) ** 3 / (G * unit_mass));
 
     return { body_distance, unit_period };
   }, [body]);
@@ -186,7 +186,7 @@ const CorrectorTable: React.FC<CorrectorTableDisplayProps> = ({ data, status }) 
         alignItems: 'center',
         border: 1,
         borderColor: '#ccc',
-        borderRadius: 5
+        borderRadius: 2
       }}
     >
       <Typography
@@ -199,6 +199,7 @@ const CorrectorTable: React.FC<CorrectorTableDisplayProps> = ({ data, status }) 
           textAlign: 'center',
           borderBottomColor: 'white',
           borderBottomWidth: 1,
+          borderRadius: 1
         }}
       >
         Correction Process
@@ -313,7 +314,6 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
           vz: lastData.vz,
           period: lastData.period,
           mu,
-          centered: false,
           method: 'DOP853',
           N: 1000,
           atol: 1e-12,
@@ -351,7 +351,6 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
           vz: lastData.vz,
           mu: body.mu,
           period: lastData.period,
-          centered: false,
         });
 
         const newCorrectorData = JSON.parse(response.data.data);
@@ -394,7 +393,6 @@ const CorrectorDataDisplay: React.FC<CorrectorTableProps> = ({
             vz: final_last_data.vz,
             period: final_last_data.period,
             mu: body.mu,
-            centered: false,
           });
           return;
         }

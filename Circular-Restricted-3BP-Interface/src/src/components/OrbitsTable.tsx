@@ -25,6 +25,10 @@ import {
   TextField,
   MenuItem,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 import axios from 'axios';
@@ -64,7 +68,7 @@ const formatValue = (value: number, precision: number): string => {
 // ============================================================================
 
 const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(
-  ({ data, onSelectionChange, handlePlotData, handleIcData }) => {
+  ({ data, onSelectionChange, filters, handlePlotData, handleIcData, columns }) => {
 
     const { body } = useAppContext();
 
@@ -81,12 +85,33 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(
     const [rtol, setRtol] = useState(1e-12);
     const [Norbits, setNorbits] = useState(1000);
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const [openColumnsDialog, setOpenColumnsDialog] = useState(false);
 
 
+    const applyFilters = useCallback(
+      (data: OrbitData[], filters: any[]): OrbitData[] => {
+        return data.filter((row) => {
+          return filters.every((filter) => {
+            const columnValue = row[filter.column as keyof OrbitData];
+            if (filter.type === 'categorical' && filter.value !== undefined) {
+              return String(columnValue) === String(filter.value);
+            }
+            if (filter.type === 'numerical' && columnValue !== null && columnValue !== undefined) {
+              const minValid = filter.min !== null && filter.min !== undefined ? columnValue >= filter.min : true;
+              const maxValid = filter.max !== null && filter.max !== undefined ? columnValue <= filter.max : true;
+              return minValid && maxValid;
+            }
+            return true;
+          });
+        });
+      },
+      []
+    );
     const safeData = useMemo(() => {
-      setRowSelection({}); 
-      return data?.orbits || [];
-    }, [data]);
+      setRowSelection({});
+      let orbits = data ? applyFilters(data.orbits, filters || []) : [];
+      return orbits;
+    }, [data, filters, applyFilters]);
 
 
     const getSelectedRows = useCallback(
@@ -109,75 +134,70 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(
     const columnHelper = createColumnHelper<OrbitData>();
     const precisionCoords = 8;
 
-    const columns = useMemo(
-      () => [
-        columnHelper.display({
-          id: 'select',
-          header: ({ table }) => (
-            <Checkbox
-              checked={table.getIsAllRowsSelected()}
-              indeterminate={table.getIsSomeRowsSelected()}
-              onChange={table.getToggleAllRowsSelectedHandler()}
-            />
-          ),
-          cell: ({ row }) => (
-            <Checkbox
-              checked={row.getIsSelected()}
-              indeterminate={row.getIsSomeSelected()}
-              onChange={row.getToggleSelectedHandler()}
-            />
-          ),
-        }),
-        columnHelper.accessor('x0', {
-          header: 'x [L.U]',
-          cell: (info) => formatValue(info.getValue(), precisionCoords),
-        }),
-        columnHelper.accessor('y0', {
-          header: 'y [L.U]',
-          cell: (info) => formatValue(info.getValue(), precisionCoords),
-        }),
-        columnHelper.accessor('z0', {
-          header: 'z [L.U]',
-          cell: (info) => formatValue(info.getValue(), precisionCoords),
-        }),
-        columnHelper.accessor('vx0', {
-          header: 'vx [L.U/T.U]',
-          cell: (info) => formatValue(info.getValue(), precisionCoords),
-        }),
-        columnHelper.accessor('vy0', {
-          header: 'vy [L.U/T.U]',
-          cell: (info) => formatValue(info.getValue(), precisionCoords),
-        }),
-        columnHelper.accessor('vz0', {
-          header: 'vz [L.U/T.U]',
-          cell: (info) => formatValue(info.getValue(), precisionCoords),
-        }),
-        columnHelper.accessor('period', {
-          header: 'Period [T.U]',
-          cell: (info) => formatValue(info.getValue(), 4),
-        }),
-        columnHelper.accessor('stability_index', {
-          header: 'Stability Index',
-          cell: (info) => formatValue(info.getValue(), 2),
-        }),
-        columnHelper.accessor('jc', {
-          header: 'Jacobi Constant',
-          cell: (info) => formatValue(info.getValue(), 5),
-        }),
-        columnHelper.accessor('source', {
-          header: 'database',
-          cell: (info) => info.getValue().toFixed(0),
-        }),
-      ],
-      [columnHelper, precisionCoords]
-    );
+    const columnsTable = useMemo(() => {
+      if (!columns || columns.length === 0) {
+        return [
+          columnHelper.display({
+            id: 'select',
+            header: ({ table }) => (
+              <Checkbox
+                checked={table.getIsAllRowsSelected()}
+                indeterminate={table.getIsSomeRowsSelected()}
+                onChange={table.getToggleAllRowsSelectedHandler()}
+              />
+            ),
+            cell: ({ row }) => (
+              <Checkbox
+                checked={row.getIsSelected()}
+                indeterminate={row.getIsSomeSelected()}
+                onChange={row.getToggleSelectedHandler()}
+              />
+            ),
+          }),
+        ];
+      }
+
+      const init_col = columnHelper.display({
+        id: 'select',
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllRowsSelected()}
+            indeterminate={table.getIsSomeRowsSelected()}
+            onChange={table.getToggleAllRowsSelectedHandler()}
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            indeterminate={row.getIsSomeSelected()}
+            onChange={row.getToggleSelectedHandler()}
+          />
+        ),
+      });
+      let cols = columns.map((c: any) => {
+        const accesor = columnHelper.accessor(c.c_name, {
+          header: c.c_name,
+          cell: (info) => {
+            const value = info.getValue();
+            if (typeof value === 'number') {
+              return formatValue(value, precisionCoords);
+            }
+            return value;
+          },
+        });
+        return accesor;
+      }
+      );
+      cols = cols.filter(col => col.header !== 'body' && col.header !== 'family');
+      return [init_col, ...cols];
+    }, [columns, columnHelper, precisionCoords]);
 
     // ============================================================================
     // TABLE INSTANCE
     // ============================================================================
     const table = useReactTable({
       data: safeData,
-      columns,
+      columns: columnsTable,
       state: {
         sorting,
         rowSelection,
@@ -201,21 +221,20 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(
     const loadOrbit = useCallback(
       async (params: FunctionParams) => {
         try {
-          const { x, y, z, vx, vy, vz, period, mu, centered } = params;
+          const { x, y, z, vx, vy, vz, period, mu } = params;
           const response = await axios.post<any>(`${API_URL}/orbits/propagate/`, {
-            x,
-            y,
-            z,
-            vx,
-            vy,
-            vz,
-            period,
-            mu,
-            method,
-            centered,
+            x: x,
+            y: y,
+            z: z,
+            vx: vx,
+            vy: vy,
+            vz: vz,
+            period: period,
+            mu: mu,
+            method: method,
             N: Norbits,
-            atol,
-            rtol,
+            atol: atol,
+            rtol: rtol,
           });
 
           if (!response.data) {
@@ -238,10 +257,13 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(
       async (paramsList: FunctionParams[]) => {
         const orbitParamsArray = paramsList.map((params) => ({
           x: params.x,
+          y: params.y,
+          z: params.z,
+          vx: params.vx,
           vy: params.vy,
           vz: params.vz,
           period: params.period,
-          centered: params.centered,
+          mu: params.mu,
         }));
 
         handleIcData?.(orbitParamsArray);
@@ -284,15 +306,14 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(
         const mu = body.mu;
 
         const paramsList: FunctionParams[] = selectedRows.map((row) => ({
-          x: row.x0,
-          y: row.y0,
-          z: row.z0,
-          vx: row.vx0,
-          vy: row.vy0,
-          vz: row.vz0,
+          x: row.x,
+          y: row.y,
+          z: row.z,
+          vx: row.vx,
+          vy: row.vy,
+          vz: row.vz,
           period: row.period,
-          mu,
-          centered: row.source === 2,
+          mu: mu,
         }));
 
         try {
@@ -304,7 +325,6 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(
             }
             return JSON.parse(result.data);
           });
-
           handlePlotData?.(plotData);
         } catch (error) {
           console.error('Error loading orbits:', error);
@@ -328,7 +348,7 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(
         'id,x0,y0,z0,vx0,vy0,vz0,period,jc,stability_index',
         ...selectedRows.map(
           (row) =>
-            `${row.id},${row.x0},${row.y0},${row.z0},${row.vx0},${row.vy0},${row.vz0},${row.period},${row.jc},${row.stability_index}`
+            `${row.id},${row.x},${row.y},${row.z},${row.vx},${row.vy},${row.vz},${row.period},${row.jc},${row.stability_index}`
         ),
       ].join('\n');
 
@@ -343,6 +363,7 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(
       link.click();
       document.body.removeChild(link);
     }, [rowSelection, getSelectedRows]);
+
 
     // ============================================================================
     // RENDER - Empty State
@@ -431,6 +452,32 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(
             <Button variant="contained" color="primary" sx={{ margin: 2 }} onClick={downloadConditions}>
               Download initial conditions
             </Button>
+
+            <Button variant="contained" color="primary" sx={{ margin: 2 }} onClick={() => setOpenColumnsDialog(true)}>
+              Show Columns
+                <Dialog open={openColumnsDialog} onClose={() => setOpenColumnsDialog(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Description of Columns</DialogTitle>
+                <DialogContent>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {columns?.map((col) => (
+                    <Box key={col.c_name} sx={{ display: 'flex', gap: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold', minWidth: '100px' }}>
+                      {col.c_name}:
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      {col.description || 'No description available'}
+                    </Typography>
+                    </Box>
+                  ))}
+                  </Box>
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={() => setOpenColumnsDialog(false)} color="primary" autoFocus>
+                  Close
+                  </Button>
+                </DialogActions>
+                </Dialog>
+            </Button>
           </Box>
         </Box>
 
@@ -518,7 +565,7 @@ const AdvancedTable: React.FC<AdvancedTableProps> = React.memo(
 );
 
 
-const OrbitDataDisplay: React.FC<AdvancedTableProps> = ({ data, onSelectionChange, handlePlotData, handleIcData }) => {
+const OrbitDataDisplay: React.FC<AdvancedTableProps> = ({ data, onSelectionChange, filters, handlePlotData, handleIcData, columns }) => {
   const handleSelectionChange = useCallback(
     (selectedRows: OrbitData[]) => {
       onSelectionChange?.(selectedRows);
@@ -527,7 +574,7 @@ const OrbitDataDisplay: React.FC<AdvancedTableProps> = ({ data, onSelectionChang
   );
 
   return (
-    <AdvancedTable data={data || null} onSelectionChange={handleSelectionChange} handlePlotData={handlePlotData} handleIcData={handleIcData} />
+    <AdvancedTable data={data || null} onSelectionChange={handleSelectionChange} handlePlotData={handlePlotData} filters={filters} handleIcData={handleIcData} columns={columns} />
   );
 };
 

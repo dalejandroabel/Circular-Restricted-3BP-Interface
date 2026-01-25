@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   MenuItem,
-  SelectChangeEvent,
   Button,
   TextField,
   Popover,
@@ -13,7 +12,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import axios from 'axios';
 import { API_URL } from '../../config';
 import { SystemOption, ApiResponse, SystemFormProps } from './types';
-
+import AddOrbitsDialog from './newOrbitsDialog';
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
@@ -25,6 +24,7 @@ const SystemForm: React.FC<SystemFormProps> = ({
   handleBody,
   handleLoading,
   loading,
+  setColumns
 }) => {
   // ============================================================================
   // STATE - Selection
@@ -32,10 +32,7 @@ const SystemForm: React.FC<SystemFormProps> = ({
   const [primaryBody, setPrimaryBody] = useState<string>('');
   const [secondaryBody, setSecondaryBody] = useState<string>('');
   const [family, setFamily] = useState<string>('');
-  const [p, setP] = useState<string>('');
-  const [q, setQ] = useState<string>('');
-  const [libration, setLibration] = useState<string>('');
-  const [batch, setBatch] = useState<string>('');
+  const [databases, setDatabases] = useState<string[]>([]);
 
   // ============================================================================
   // STATE - Options
@@ -43,19 +40,16 @@ const SystemForm: React.FC<SystemFormProps> = ({
   const [primaryOptions, setPrimaryOptions] = useState<SystemOption[]>([]);
   const [secondaryOptions, setSecondaryOptions] = useState<SystemOption[]>([]);
   const [familyOptions, setFamilyOptions] = useState<SystemOption[]>([]);
-  const [pOptions, setPOptions] = useState<SystemOption[]>([]);
-  const [qOptions, setQOptions] = useState<SystemOption[]>([]);
-  const [librationOptions, setLibrationOptions] = useState<string[]>([]);
 
   // ============================================================================
   // STATE - UI Control
   // ============================================================================
-  const [librationActive, setLibrationActive] = useState<boolean>(false);
-  const [batchActive, setBatchActive] = useState<boolean>(false);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [Norbits, setNorbits] = useState<number | undefined>(undefined);
   const [database, setDatabase] = useState<string>('0');
   const [currentSecondary, setCurrentSecondary] = useState<string>('');
+  const [dialogOpen, setDialogOpen] = useState<boolean>(false);
+
 
   // ============================================================================
   // EFFECT - Fetch Primary Bodies
@@ -126,7 +120,7 @@ const SystemForm: React.FC<SystemFormProps> = ({
         const options =
           response.data.families?.map((family) => ({
             id: family.id_family,
-            name: family.family,
+            name: family.name,
           })) || [];
         setFamilyOptions(options);
         setFamily('');
@@ -138,125 +132,39 @@ const SystemForm: React.FC<SystemFormProps> = ({
     fetchFamilies();
   }, [primaryBody, secondaryBody]);
 
-  // ============================================================================
-  // EFFECT - Fetch Resonance Options and Libration/Batch
-  // ============================================================================
+
   useEffect(() => {
-    if (!family) return;
+    loadDatabases();
+  }, []);
 
-    const fetchResonanceOptions = async () => {
-      try {
-        const response = await axios.get<ApiResponse>(
-          `${API_URL}/resonances/${secondaryBody}`
-        );
-
-        const uniquePOptions = Array.from(
-          new Set(response.data.resonances?.map((pair) => pair.p))
-        )
-          .sort((a, b) => Number(a) - Number(b))
-          .map((p) => ({ id: p, name: p }));
-
-        setPOptions(uniquePOptions);
-        setQOptions([]);
-        setQ('');
-      } catch (error) {
-        console.error('Error fetching resonance options:', error);
-      }
-    };
-
-    const fetchLibrationBatch = async () => {
-      try {
-        const response = await axios.get<ApiResponse>(
-          `${API_URL}/librationbatch/${family}`
-        );
-
-        if (response.data.family) {
-          const librationData = response.data.family[0].libration;
-          const batchData = response.data.family[0].batch;
-
-          if (librationData && librationData !== '') {
-            setLibrationActive(true);
-            const libOptions = librationData.split('').map((num) => `L${num}`);
-            setLibrationOptions(libOptions);
-          } else {
-            setLibrationActive(false);
-            setLibrationOptions([]);
-          }
-
-          setBatchActive(batchData === 1);
-          setLibration('');
-          setBatch('');
-        }
-      } catch (error) {
-        console.error('Error fetching libration batch:', error);
-      }
-    };
-
-    if (family === '9') {
-      fetchResonanceOptions();
-      setBatchActive(false);
-      setLibrationActive(false);
-    } else {
-      setPOptions([]);
-      setQOptions([]);
-      fetchLibrationBatch();
+  const loadDatabases = async () => {
+    try {
+      const response = await axios.get<ApiResponse>(`${API_URL}/databases/`);
+      setDatabases(response.data.databases || []);
+      return databases;
+    } catch (error) {
+      console.error('Error fetching databases:', error);
+      return [];
     }
-  }, [family, secondaryBody]);
-
-  // ============================================================================
-  // EFFECT - Fetch Q Options
-  // ============================================================================
-  useEffect(() => {
-    if (!family || family !== '9' || !p) return;
-
-    const fetchQOptions = async () => {
-      try {
-        const response = await axios.get<ApiResponse>(
-          `${API_URL}/resonances/${secondaryBody}`
-        );
-
-        const filteredQOptions =
-          response.data.resonances
-            ?.filter((pair) => pair.p === p)
-            .map((pair) => ({ id: pair.q, name: pair.q }))
-            .sort((a, b) => Number(a.id) - Number(b.id)) || [];
-
-        setQOptions(filteredQOptions);
-
-        if (!filteredQOptions.some((option) => option.id === q)) {
-          setQ('');
-        }
-      } catch (error) {
-        console.error('Error fetching Q options:', error);
-      }
-    };
-
-    fetchQOptions();
-  }, [p, secondaryBody, family, q]);
-
+  }
   // ============================================================================
   // HANDLERS - Selection Changes
   // ============================================================================
-  const handlePrimaryChange = useCallback((event: SelectChangeEvent<string>) => {
+  const handlePrimaryChange = useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setPrimaryBody(event.target.value);
-    setBatchActive(false);
-    setLibrationActive(false);
+
     setSecondaryBody('');
     setFamily('');
     setFamilyOptions([]);
   }, []);
 
-  const handleSecondaryChange = useCallback((event: SelectChangeEvent<string>) => {
+  const handleSecondaryChange = useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setSecondaryBody(event.target.value);
     setFamily('');
     setFamilyOptions([]);
-    setBatchActive(false);
-    setLibrationActive(false);
-    setBatch('');
-    setLibration('');
   }, []);
 
-  const handleFamilyChange = useCallback((event: SelectChangeEvent<string>) => {
+  const handleFamilyChange = useCallback((event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFamily(event.target.value);
   }, []);
 
@@ -265,23 +173,24 @@ const SystemForm: React.FC<SystemFormProps> = ({
   // ============================================================================
   const handleLoadOrbits = useCallback(async () => {
     const bodyResponse = await axios.get(`${API_URL}/bodies/${secondaryBody}`);
-    handleBody(bodyResponse.data.body[0]);
+    handleBody(bodyResponse.data.body);
 
     try {
       handleLoading(true);
 
-      const formattedP = p === '' ? '0' : p;
-      const formattedQ = q === '' ? '0' : q;
-      const formattedLibration = libration === '' ? '-1' : libration.replace('L', '');
-      const formattedBatch = batch === '' ? '0' : batch;
       const formattedLimit = Norbits === undefined ? '0' : String(Norbits);
       const formattedDatabase = database;
 
       const response = await axios.get<ApiResponse>(
-        `${API_URL}/orbits/?S=${secondaryBody}&F=${family}&P=${formattedP}&Q=${formattedQ}&L=${formattedLibration}&B=${formattedBatch}&LIMIT=${formattedLimit}&D=${formattedDatabase}`
+        `${API_URL}/orbits/?S=${secondaryBody}&F=${family}&LIMIT=${formattedLimit}&D=${formattedDatabase}`
       );
 
       onDataLoaded(response.data);
+
+      const responseColumns = await axios.get<ApiResponse>(
+        `${API_URL}/columns/${secondaryBody}`
+      );
+      setColumns(responseColumns.data);
 
       if (secondaryBody !== currentSecondary) {
         const responseIc = await axios.get<ApiResponse>(
@@ -289,23 +198,22 @@ const SystemForm: React.FC<SystemFormProps> = ({
         );
 
         const icDataModified = {
-          x: responseIc.data.initialconditions?.map((ic) => Number(ic.x0)),
-          y: responseIc.data.initialconditions?.map((ic) => Number(ic.y0)),
-          z: responseIc.data.initialconditions?.map((ic) => Number(ic.z0)),
-          vx: responseIc.data.initialconditions?.map((ic) => Number(ic.vx0)),
-          vy: responseIc.data.initialconditions?.map((ic) => Number(ic.vy0)),
-          vz: responseIc.data.initialconditions?.map((ic) => Number(ic.vz0)),
+          x: responseIc.data.initialconditions?.map((ic) => Number(ic.x)),
+          y: responseIc.data.initialconditions?.map((ic) => Number(ic.y)),
+          z: responseIc.data.initialconditions?.map((ic) => Number(ic.z)),
+          vx: responseIc.data.initialconditions?.map((ic) => Number(ic.vx)),
+          vy: responseIc.data.initialconditions?.map((ic) => Number(ic.vy)),
+          vz: responseIc.data.initialconditions?.map((ic) => Number(ic.vz)),
           period: responseIc.data.initialconditions?.map((ic) => Number(ic.period)),
           family: responseIc.data.initialconditions?.map((ic) => Number(ic.id_family)),
           stability_index: responseIc.data.initialconditions?.map((ic) =>
             Number(ic.stability_index)
           ),
           jacobi_constant: responseIc.data.initialconditions?.map((ic) =>
-            Number(ic.jacobi_constant)
+            Number(ic.jc)
           ),
-          source: responseIc.data.initialconditions?.map((ic) => Number(ic.source)),
+          source: responseIc.data.initialconditions?.map((ic) => String(ic.source)),
         };
-
         onIcDataLoaded(icDataModified);
         handlePlotData([]);
       }
@@ -319,10 +227,6 @@ const SystemForm: React.FC<SystemFormProps> = ({
   }, [
     secondaryBody,
     family,
-    p,
-    q,
-    libration,
-    batch,
     Norbits,
     database,
     currentSecondary,
@@ -339,11 +243,9 @@ const SystemForm: React.FC<SystemFormProps> = ({
   const isButtonEnabled = useCallback((): boolean => {
     const hasBasicSelection = primaryBody && secondaryBody && family;
     if (!hasBasicSelection) return false;
-    if (family === '9' && (!p || !q)) return false;
-    if (librationActive && !libration) return false;
-    if (batchActive && !batch) return false;
     return true;
-  }, [primaryBody, secondaryBody, family, p, q, libration, batch, librationActive, batchActive]);
+  }, [primaryBody, secondaryBody, family]);
+
 
   // ============================================================================
   // RENDER
@@ -434,78 +336,15 @@ const SystemForm: React.FC<SystemFormProps> = ({
             ))}
           </TextField>
 
-          {family === '9' && (
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', width: '80%' }}>
-              <TextField
-                id="p-select"
-                label="p"
-                value={p}
-                onChange={(e) => {
-                  setP(e.target.value);
-                  setQ('');
-                }}
-                select
-                fullWidth
-              >
-                {pOptions.map((option) => (
-                  <MenuItem key={option.id} value={option.id}>
-                    {option.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-
-              <TextField
-                id="q-select"
-                label="q"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                select
-                fullWidth
-                disabled={!p}
-              >
-                {qOptions.map((option) => (
-                  <MenuItem key={option.id} value={option.id}>
-                    {option.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Box>
-          )}
-
-          {librationActive && (
-            <TextField
-              id="libration-select"
-              label="Libration"
-              value={libration}
-              onChange={(e) => setLibration(e.target.value)}
-              select
-              fullWidth
-              sx={{ width: '80%' }}
-            >
-              {librationOptions.map((option) => (
-                <MenuItem key={option} value={option}>
-                  {option}
-                </MenuItem>
-              ))}
-            </TextField>
-          )}
-
-          {batchActive && (
-            <TextField
-              id="batch-select"
-              label="Batch"
-              value={batch}
-              onChange={(e) => setBatch(e.target.value)}
-              select
-              fullWidth
-              sx={{ width: '80%' }}
-            >
-              <MenuItem value="-1">South</MenuItem>
-              <MenuItem value="1">North</MenuItem>
-            </TextField>
-          )}
         </Box>
       </Box>
+      <Button variant="outlined" onClick={() => setDialogOpen(true)}>
+        Add Orbits
+      </Button>
+      <AddOrbitsDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}>
+      </AddOrbitsDialog>
 
       <Box sx={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
         <Popover
@@ -529,9 +368,12 @@ const SystemForm: React.FC<SystemFormProps> = ({
               select
               fullWidth
             >
-              <MenuItem value="0">any</MenuItem>
-              <MenuItem value="1">Planar Axis-symetric</MenuItem>
-              <MenuItem value="2">JPL CRTBP</MenuItem>
+              <MenuItem value="-1">All Databases</MenuItem>
+              {databases.map((db, index) => (
+                <MenuItem key={index} value={String(index)}>
+                  {db}
+                </MenuItem>
+              ))}
             </TextField>
             <TextField
               label="Number of Orbits"

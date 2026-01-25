@@ -46,8 +46,7 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
   // ============================================================================
   // DERIVED VALUES
   // ============================================================================
-  const R2 = body?.radius;
-  const R1 = body?.primary_radius;
+  const R2 = body?.radius_ul;
   const mu = body?.mu || 0;
 
   // ============================================================================
@@ -155,6 +154,10 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
           if (maxCoords[0] < Math.abs(L3)) {
             maxCoords[0] = Math.abs(L3);
           }
+          const {data: R1_tmp} = await axios.get(
+            `${API_URL}/bodies/radiusR1/${body.id_body}`
+          );
+          const R1 = R1_tmp.radius_r1;
           const { data: R1_sphere_ } = await axios.post(
             `${API_URL}/orbits/sphere/`,
             { R: R1, N: 1, mu: mu }
@@ -221,7 +224,7 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
     };
 
     fetchPlotData();
-  }, [plotData, body, mu, R1, R2]);
+  }, [plotData, body, mu, R2]);
 
   // ============================================================================
   // HANDLER - Close Orbit

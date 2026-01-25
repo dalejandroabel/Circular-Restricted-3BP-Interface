@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo} from 'react';
 import { Box, Grid2, Typography, styled } from '@mui/material';
 import AppContext, { BodyData } from './components/contexts';
 import SystemForm from './components/SystemForm';
@@ -8,7 +8,7 @@ import OrbitDisplay from './components/OrbitDisplay';
 import CorrectorTable from './components/CorrectorTable';
 import OrbitsTableDisplay from './components/OrbitsTable';
 import orbitIcon from './assets/orbit.svg';
-
+import { Filter } from './components/types';
 // ============================================================================
 // STYLED COMPONENTS
 // ============================================================================
@@ -41,6 +41,8 @@ const CircularRestrictedThreeBody: React.FC = () => {
   const [plotDataIc, setPlotDataIc] = useState(null);
   const [correctordata, setCorrectorData] = useState(null);
   const [isLoadingOrbits, setIsLoadingOrbits] = useState(false);
+  const [columnsTable, setColumnsTable] = useState<any>([]);
+  const [filters, setFilters] = useState<Filter[]>([]);
 
   // Memoized Context Value
   const contextValue = useMemo(
@@ -52,6 +54,7 @@ const CircularRestrictedThreeBody: React.FC = () => {
       correctorData: correctordata,
       tableData: data,
       isLoading: isLoadingOrbits,
+      columns: columnsTable,
       setBody,
       setPlotData,
       setICData,
@@ -59,6 +62,7 @@ const CircularRestrictedThreeBody: React.FC = () => {
       setCorrectorData,
       setTableData: setData,
       setIsLoading: setIsLoadingOrbits,
+      setColumns: setColumnsTable,
     }),
     [body, plotData, icData, plotDataIc, correctordata, data, isLoadingOrbits]
   );
@@ -106,8 +110,9 @@ const CircularRestrictedThreeBody: React.FC = () => {
               handleBody={setBody}
               handleLoading={setIsLoadingOrbits}
               loading={isLoadingOrbits}
+              setColumns={setColumnsTable}
             />
-            <ParametersTab data={data} />
+            <ParametersTab data={data} columns={columnsTable} onFilterChange={setFilters} />
           </Grid2>
 
           {/* Right Column - Plots and Tables */}
@@ -122,6 +127,7 @@ const CircularRestrictedThreeBody: React.FC = () => {
                 tableData={data}
                 setPlotData={setPlotData}
                 setPlotDataIc={setPlotDataIc}
+                columns={columnsTable}
               />
 
               <OrbitDisplay
@@ -163,6 +169,8 @@ const CircularRestrictedThreeBody: React.FC = () => {
               data={data}
               handlePlotData={setPlotData}
               handleIcData={setPlotDataIc}
+              columns={columnsTable} // Provide a default empty array if null
+              filters={filters}
             />
           </Box>
         </Grid2>
