@@ -4,8 +4,7 @@ module.exports = {
       name: "crtbp_api",
       script: "index.js",
 
-      // Puerto lo maneja tu app (3001)
-      instances: 1,          // 👈 NO cluster, MySQL + Python
+      instances: 1,     
       exec_mode: "fork",
 
       autorestart: true,
