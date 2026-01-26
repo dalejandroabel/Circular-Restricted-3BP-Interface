@@ -14,7 +14,12 @@ module.exports = {
 
       env: {
         NODE_ENV: "production",
-        PORT: 3001
+        PORT: 3001,
+        PASSWORDDB: "crtbp_password",
+        MANAGERDB: "CPOI",
+        JPLDB: "jpl",
+        PAXDB: "pax",
+        DBS: 'pax jpl'
       },
 
       error_file: "logs/err.log",
