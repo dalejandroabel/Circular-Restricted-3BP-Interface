@@ -295,7 +295,7 @@ const PlotTabs: React.FC<PlotTabsProps> = ({
         };
 
         const uniqueFamilies = Array.from(new Set(modifiedIC.family));
-        const colors = uniqueFamilies.map((family, index) => COLORS[index]);
+        const colors = uniqueFamilies.map((_family, index) => COLORS[index]);
         const names = uniqueFamilies.map((family) =>
           allFamilies.find((f: any) => f.id_family == family)?.name
         );

@@ -1,41 +1,24 @@
 const express = require("express");
-var mysql = require('mysql2');
-const cors = require("cors");
 const { get } = require("http");
 const spawn = require("child_process").spawn;
 
 
 require('dotenv').config()
 
-const corsOptions = {
-  origin: ["http://localhost:5173", "http://127.0.0.1:5173"]
-};
+
+const { managerPool, getCatalogPool } = require("./db")
 
 const app = express();
-app.use(cors(corsOptions));
 app.use(express.json());
 
 
 const PORT = process.env.PORT || 3001;
 
 
-cpoi_db = mysql.createConnection({
-  host: "localhost",
-  user: process.env.USERDB,
-  password: process.env.PASSWORDDB,
-  database: process.env.MANAGERDB,
-});
-
-cpoi_db.connect(function (err) {
-  if (err) throw err;
-  console.log("Connected to " + process.env.MANAGERDB + " database!");
-});
-
 let cachedData = {
   databases: [],
   bodies: [],
   bodies_db: [],
-  connections: [],
   columns: []
 };
 
@@ -58,46 +41,31 @@ async function loadDatabases(forceRefresh = false) {
   }
 
   try {
-    const [catalogs] = await cpoi_db.promise().query("SELECT name FROM catalogs");
-    const databases = catalogs.map(row => row.name);
+    const [catalogs] = await managerPool.query("SELECT name FROM catalogs");
+    const databases = catalogs.map(r => r.name);
 
     let allBodies = [];
     let bodiesByDb = [];
-    let connections = [];
-    let columns = [];
 
-    const bodyPromises = databases.map(async (db_name) => {
+    for (const db_name of databases) {
       try {
-        const connection = await mysql.createConnection({
-          host: "localhost",
-          user: process.env.USERDB,
-          password: process.env.PASSWORDDB,
-          database: db_name,
-        });
-        connections.push(connection);
-        const [bodies_result] = await connection.promise().query("SELECT * FROM bodies");
+        const pool = getCatalogPool(db_name);
+        const [bodies] = await pool.query("SELECT * FROM bodies");
 
-        bodiesByDb.push({ db: db_name, bodies: bodies_result });        return bodies_result;
+        bodiesByDb.push({ db: db_name, bodies });
+        allBodies.push(...bodies);
       } catch (err) {
-        console.error(`Error querying database ${db_name}:`, err.message);
-        return [];
+        console.error(`Error DB ${db_name}:`, err.message);
       }
-    });
+    }
 
-    const [columns_result] = await cpoi_db.promise().query("SELECT * FROM columns");
+    const [columns] = await managerPool.query("SELECT * FROM columns");
 
-    const results = await Promise.all(bodyPromises);
-
-    allBodies = results.flat();
-    const uniqueBodies = getUniqueByKey(allBodies, 'id_body');
-
-    // Update cache
     cachedData = {
       databases,
-      bodies: uniqueBodies,
+      bodies: getUniqueByKey(allBodies, "id_body"),
       bodies_db: bodiesByDb,
-      connections,
-      columns: columns_result
+      columns
     };
 
     return cachedData;
@@ -108,94 +76,82 @@ async function loadDatabases(forceRefresh = false) {
 }
 
 async function findFamiliesIndices(familyId, body_id) {
-  let indices = [];
-  try {
-    for (let i = 0; i < cachedData.databases.length; i++) {
-      let body_check = cachedData.bodies_db[i].bodies.find(body => body.id_body == body_id);
-      if (body_check) {
-        const query = "SELECT id_catalog" + (i + 1) + " FROM families WHERE id_family = " + familyId + " AND id_catalog" + (i + 1) + " IS NOT NULL";
-        const promise = cpoi_db.promise().query(query)
-          .then(([result]) => {
-            return result.length > 0 ? result[0]['id_catalog' + (i + 1)] : null;
-          })
-          .catch(err => {
-            console.error(`Error querying catalog ${i + 1}:`, err);
-            return null;
-          });
-        indices.push(promise);
-      }
-      else {
-        // This database doesn't have this body
-        indices.push(Promise.resolve(null));
-      }
+  const indices = [];
+
+  for (let i = 0; i < cachedData.databases.length; i++) {
+    const hasBody = cachedData.bodies_db[i].bodies
+      .some(b => b.id_body == body_id);
+
+    if (!hasBody) {
+      indices.push(null);
+      continue;
     }
-    return await Promise.all(indices);
+
+    const query = `
+      SELECT id_catalog${i + 1} AS id 
+      FROM families 
+      WHERE id_family = ? AND id_catalog${i + 1} IS NOT NULL
+    `;
+
+    const [rows] = await managerPool.query(query, [familyId]);
+    indices.push(rows.length ? rows[0].id : null);
   }
-  catch (err) {
-    console.error(err);
-    throw err;
-  }
+
+  return indices;
 }
+
 
 async function getOrbitsByFamily(families_id, id_body) {
-  try {
-    const orbits_promises = [];
+  const orbits_promises = [];
 
-    for (let i = 0; i < families_id.length; i++) {
-      // Check if the family_id is not null (skip databases without this body/family)
-      if (families_id[i] !== null) {
-        const query = `SELECT * FROM orbits WHERE id_body = ${id_body} AND id_family = ${families_id[i]}`;
+  for (let i = 0; i < families_id.length; i++) {
+    if (families_id[i] !== null) {
+      const db = cachedData.databases[i];
+      const pool = getCatalogPool(db);
 
-        // Push to orbits_promises, not orbits.promises
-        orbits_promises.push(
-          cachedData.connections[i].promise().query(query)
-            .then(([result]) => {
-              return result.map(item => ({ ...item, source: cachedData.databases[i] }));
-            })
-            .catch(err => {
-              console.error(`Error querying database ${i}:`, err);
-              return []; // Return empty array on error to prevent Promise.all from failing
-            })
-        );
-      }
-    }
-
-    const results = await Promise.all(orbits_promises);
-    return results.flat();
-  }
-  catch (err) {
-    console.error(err);
-    throw err;
-  }
-}
-
-async function getAllOrbitsFromBody(id_body) {
-  try {
-    const orbits_promises = [];
-
-    for (let i = 0; i < cachedData.databases.length; i++) {
-      const query = `SELECT * FROM orbits WHERE id_body = ${id_body}`;
+      const query = `
+        SELECT * FROM orbits 
+        WHERE id_body = ? AND id_family = ?
+      `;
 
       orbits_promises.push(
-        cachedData.connections[i].promise().query(query)
-          .then(([result]) => {
-            return result.map(item => ({ ...item, source: cachedData.databases[i] }));
-          })
+        pool.query(query, [id_body, families_id[i]])
+          .then(([result]) =>
+            result.map(o => ({ ...o, source: db }))
+          )
           .catch(err => {
-            console.error(`Error querying database ${i}:`, err);
-            return []; // Return empty array on error to prevent Promise.all from failing
+            console.error(`DB ${db}:`, err.message);
+            return [];
           })
       );
     }
+  }
 
-    const results = await Promise.all(orbits_promises);
-    return results.flat();
+  const results = await Promise.all(orbits_promises);
+  return results.flat();
+}
+
+
+async function getAllOrbitsFromBody(id_body) {
+  const orbits_promises = [];
+
+  for (const db of cachedData.databases) {
+    const pool = getCatalogPool(db);
+    const query = "SELECT * FROM orbits WHERE id_body = ?";
+
+    orbits_promises.push(
+      pool.query(query, [id_body])
+        .then(([rows]) =>
+          rows.map(o => ({ ...o, source: db }))
+        )
+        .catch(() => [])
+    );
   }
-  catch (err) {
-    console.error(err);
-    throw err;
-  }
-};
+
+  const results = await Promise.all(orbits_promises);
+  return results.flat();
+}
+
 
 async function getBodyById(id_body) {
   try {
@@ -227,7 +183,7 @@ async function getColumnsByBody(id_body) {
     const whereConditions = databases_in.map(db => `${db} IS NOT NULL`).join(' AND ');
     const query = `SELECT * FROM columns WHERE ${whereConditions}`;
 
-    const [result] = await cpoi_db.promise().query(query);
+    const [result] = await managerPool.query(query)
     return result;
   }
   catch (err) {
@@ -288,7 +244,7 @@ app.get("/api/families/:id", async (req, res) => {
           'SELECT * FROM families WHERE id_catalog' + (i + 1) + ' IS NOT NULL';
         promises.push(
           new Promise((resolve, reject) => {
-            cpoi_db.promise().query(query)
+            managerPool.query(query)
               .then(([result]) => { resolve(result) })
               .catch(err => reject(err));
           })
@@ -312,8 +268,8 @@ app.get("/api/families/:id", async (req, res) => {
 app.get("/api/Allfamilies/", async (req, res) => {
   try {
     const query = 'SELECT * FROM families'
-    const response = await cpoi_db.promise().query(query);
-    res.json({ families: response[0] });
+    const [response] = await managerPool.query(query);
+    res.json({ families: response });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Database error" });
@@ -321,37 +277,48 @@ app.get("/api/Allfamilies/", async (req, res) => {
 });
 
 app.get("/api/allfamilies/:db", async (req, res) => {
-  const db_name = req.params.db;
-  const index = cachedData.databases.indexOf(db_name);
-  if (index === -1) {
-    return res.status(404).json({ error: "Database not found" });
+  try {
+    const db_name = req.params.db;
+    const index = cachedData.databases.indexOf(db_name);
+
+    if (index === -1) {
+      return res.status(404).json({ error: "Database not found" });
+    }
+
+    const pool = getCatalogPool(db_name);
+
+    const [families] = await pool.query("SELECT * FROM families");
+
+    const namePromises = families.map(fam => {
+      const q = `
+        SELECT name 
+        FROM families 
+        WHERE id_catalog${index + 1} = ?
+      `;
+      return managerPool
+        .query(q, [fam.id_family])
+        .then(([rows]) => rows[0]?.name ?? null);
+    });
+
+    const names = await Promise.all(namePromises);
+
+    families.forEach((fam, i) => {
+      fam.name = names[i];
+    });
+
+    res.json({ families });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Database error" });
   }
-  let query = 'SELECT * FROM families';
-  cachedData.connections[index].query(query, async function (err, result) {
-    if (err) throw err;
-    ipoc_names = [];
-    for (let i = 0; i < result.length; i++) {
-      ipoc_names.push(new Promise((resolve, reject) => {
-        let query2 = `SELECT name FROM families WHERE id_catalog${index + 1} = ${result[i].id_family}`;
-        cpoi_db.query(query2, function (err, result2) {
-          if (err) reject(err);
-          resolve(result2[0].name);
-        });
-      }));
-    }
-    const names = await Promise.all(ipoc_names);
-    for (let i = 0; i < result.length; i++) {
-      result[i].name = names[i];
-    }
-    res.json({ families: result });
-  });
 });
+
 
 app.get("/api/allColumns/", async (req, res) => {
   try {
     const query = 'SELECT * FROM columns'
-    const response = await cpoi_db.promise().query(query);
-    res.json({ columns: response[0] });
+    const [response] = await managerPool.query(query);
+    res.json({ columns: response });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Database error" });
@@ -510,8 +477,8 @@ app.get("/api/bodies/radiusR1/:id_body", async (req, res) => {
   const primary_id = body.primary_id;
   const P_body = await getBodyById(primary_id);
   const R1 = P_body.radius_ul * (P_body.distance_km / body.distance_km);
-  res.json({ radius_r1: R1 });  
-  });
+  res.json({ radius_r1: R1 });
+});
 
 app.get("/api/orbits/lagrange/:id_body", async (req, res) => {
   const id_body = req.params.id_body;

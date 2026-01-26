@@ -1,4 +1,4 @@
-export const API_URL = "http://localhost:3001/api"
+export const API_URL = "/api"
 
 export const COLORS = [
     "rgb(24,95,144)",
