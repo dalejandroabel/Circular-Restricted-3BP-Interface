@@ -481,24 +481,34 @@ app.get("/api/bodies/radiusR1/:id_body", async (req, res) => {
 });
 
 app.get("/api/orbits/lagrange/:id_body", async (req, res) => {
-  const id_body = req.params.id_body;
-  body = await getBodyById(id_body);
-  mu = body.mu;
+  try {
+    const id_body = req.params.id_body;
+    const body = await getBodyById(id_body);
+    
+    if (!body) {
+      return res.status(404).json({ error: "Body not found", id_body });
+    }
+    
+    console.log(body, id_body);
+    const mu = body.mu;
 
-  const pythonProcess = spawn(".crtbp_venv/bin/python3", ["python_scripts/physics.py", "Lagrange",
-    mu]);
-  let dataToSend = "";
-  pythonProcess.stdout.on("data", (data) => {
-    dataToSend += data.toString();
-  });
-  pythonProcess.stderr.on("data", (data) => {
-    console.error(`stderr: ${data}`);
-  });
-  pythonProcess.on("close", (code) => {
-    res.json({ data: dataToSend });
-  });
-}
-);
+    const pythonProcess = spawn(".crtbp_venv/bin/python3", ["python_scripts/physics.py", "Lagrange",
+      mu]);
+    let dataToSend = "";
+    pythonProcess.stdout.on("data", (data) => {
+      dataToSend += data.toString();
+    });
+    pythonProcess.stderr.on("data", (data) => {
+      console.error(`stderr: ${data}`);
+    });
+    pythonProcess.on("close", (code) => {
+      res.json({ data: dataToSend });
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Database error", message: err.message });
+  }
+});
 
 
 app.post("/api/orbits/sphere/", (req, res) => {
@@ -523,12 +533,14 @@ app.post("/api/orbits/sphere/", (req, res) => {
 }
 );
 
-
-
-
-app.listen(PORT, () => {
-  console.log(`Servidor escuchando en el puerto: ${PORT}`);
-});
-
-
-
+loadDatabases()
+  .then(() => {
+    console.log('Cache initialized successfully');
+    app.listen(PORT, () => {
+      console.log(`Servidor escuchando en el puerto: ${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('Failed to initialize cache:', err);
+    process.exit(1);
+  });

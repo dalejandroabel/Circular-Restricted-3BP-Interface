@@ -81,9 +81,9 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
 
           const validX = _validX.map((val: number) => val - (1 - mu));
 
-          if (validX.length) maxCoords[0] = Math.max(maxCoords[0], ...validX);
-          if (validY.length) maxCoords[1] = Math.max(maxCoords[1], ...validY);
-          if (validZ.length) maxCoords[2] = Math.max(maxCoords[2], ...validZ);
+            if (validX.length) maxCoords[0] = Math.max(maxCoords[0], ...validX.map(Math.abs));
+            if (validY.length) maxCoords[1] = Math.max(maxCoords[1], ...validY.map(Math.abs));
+            if (validZ.length) maxCoords[2] = Math.max(maxCoords[2], ...validZ.map(Math.abs));
         });
 
         // Get Lagrange points
@@ -201,7 +201,7 @@ const OrbitDisplay: React.FC<OrbitDisplayProps> = ({
 
         // Set axis limits
         const factor = 1.1;
-        const limit = Math.max(...maxCoords);
+        const limit = Math.max(...maxCoords.map(coord => Math.abs(coord)));
         const ranges = [-limit * factor, limit * factor];
 
         setLayout({

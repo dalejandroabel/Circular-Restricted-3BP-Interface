@@ -99,7 +99,15 @@ const CircularRestrictedThreeBody: React.FC = () => {
           insights into orbit dynamics and potentially discover new orbits with
           applications in solar system exploration.
         </Typography>
-
+        <Typography variant="body2" sx={{ mt: 2, mb: 4 }} style={{ textAlign: 'center' }}>
+            Author: Diego Alejandro Acosta Beltran | Universidad de Antioquia 
+            <a 
+              href="https://github.com/dalejandroabel/Circular-Restricted-3BP-Interface" 
+              target="_blank" 
+            >
+              GitHub Repository
+            </a>
+        </Typography>
         <Grid2 container>
           {/* Left Column - System Configuration */}
           <Grid2 size={3} sx={{ padding: 4, mt: 4 }}>
